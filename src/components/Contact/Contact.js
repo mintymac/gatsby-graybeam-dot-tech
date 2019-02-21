@@ -37,7 +37,7 @@ const Contact = props => {
     fetch("/", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: encode({ "form-name": "contact", ...values })
+      body: encode({ "form-name" : "contact", ...values })
     })
       .then(() => {
         console.log("Form submission success");
@@ -60,7 +60,7 @@ const Contact = props => {
           <div className="form">
             <Form
               name="contact"
-              onSubmit={handleSubmit}
+              //onSubmit={handleSubmit}
               data-netlify="true"
               data-netlify-honeypot="bot-field"
             >
