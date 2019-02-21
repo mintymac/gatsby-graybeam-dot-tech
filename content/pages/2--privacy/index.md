@@ -1,5 +1,6 @@
 ---
 title: Privacy Policy
+menuTitle: Privacy
 ---
 
 Rviverra sodales ipsum gravida nec. Integer gravida nisi ut magna mollis molestie. Nullam pharetra accumsan sagittis. Proin tristique rhoncus orci, eget vulputate nisi sollicitudin et. Quisque lacus augue, mollis non mollis et, ullamcorper in purus. Morbi et sem orci.

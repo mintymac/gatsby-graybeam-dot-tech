@@ -1,4 +1,4 @@
-#!bin/sh
+#!bin/bash
 
 # Exit the script on any command with non 0 return code
 set -e
