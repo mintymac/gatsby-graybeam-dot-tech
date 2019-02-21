@@ -52,14 +52,15 @@ color:
       i: '#514f4d'
       j: &color-gray-10 '#3e3e3c'
       k: '#2b2826'
+      l: &color-gray-4 '#757474'
     black: '#000000'
   brand:
     primary: &color-brand-primary '#7c3cb7'
-    primaryActive: '#709425'
-    light: '#709425'
-    lightActive: '#709425'
-    dark: '#709425'
-    darkActive: '#709425'
+    primaryActive: '#7c3cb7'
+    light: '#7c3cb7'
+    lightActive: '#7c3cb7'
+    dark: '#7c3cb7'
+    darkActive: '#7c3cb7'
   special:
     attention: &color-special-attention orange
 # FONT
@@ -134,7 +135,7 @@ icon:
 hero:
   h1:
     size: *font-size-xxl
-    color: *color-gray-1
+    color: *color-gray-4
     lineHeight: *font-line-height-xs
   background: 'linear-gradient(0deg, #E0306E, #6438B5)'
 blog:
