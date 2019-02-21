@@ -54,7 +54,7 @@ color:
       k: '#2b2826'
     black: '#000000'
   brand:
-    primary: &color-brand-primary '#709425'
+    primary: &color-brand-primary '#7c3cb7'
     primaryActive: '#709425'
     light: '#709425'
     lightActive: '#709425'
@@ -134,7 +134,7 @@ icon:
 hero:
   h1:
     size: *font-size-xxl
-    color: *color-white
+    color: *color-gray-1
     lineHeight: *font-line-height-xs
   background: 'linear-gradient(0deg, #E0306E, #6438B5)'
 blog:
@@ -147,4 +147,3 @@ header:
     default: 80px
     fixed: 50px;
     homepage: 100px;
-
