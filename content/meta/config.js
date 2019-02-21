@@ -33,7 +33,6 @@ module.exports = {
   // social
   authorSocialLinks: [
     { name: "github", url: "https://github.com/orgs/GrayBeamTechnology" },
-    { name: "twitter", url: "https://twitter.com/graybeamtech" },
-    { name: "facebook", url: "http://facebook.com/graybeamtech" }
+    { name: "minds", url: "https://www.minds.com/graybeamtech" },
   ]
 };
