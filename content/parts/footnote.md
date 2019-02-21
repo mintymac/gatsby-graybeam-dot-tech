@@ -3,5 +3,5 @@ title: footnote
 ---
 
 * gray beam technology
-* thank you greg lobinski
+* theme by [GL](https://gatsby-starter-hero-blog.greglobinski.com/)
 * delivered by [Netlify](https://www.netlify.com/)
