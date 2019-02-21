@@ -1,6 +1,6 @@
 ---
 title: About
-menuTitle: About
+menuTitle: About GB
 ---
 
 Gray Beam Technology was created to bring people together.
