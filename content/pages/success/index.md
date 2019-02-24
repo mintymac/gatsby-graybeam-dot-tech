@@ -1,6 +1,6 @@
 ---
 title: Success
-menuTitle: Success
+menuTitle: success
 ---
 
 Thank you. <br />
