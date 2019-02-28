@@ -58,51 +58,7 @@ const Contact = props => {
       <ThemeContext.Consumer>
         {theme => (
           <div className="form">
-            <p>We'll get back to you shortly! Email: <a href="mailto:origin@graybeam.tech">origin@graybeam.tech</a></p>
-            // <Form
-            //   name="contact"
-            //   //onSubmit={handleSubmit}
-            //   submit="POST"
-            //   data-netlify="true"
-            //   //data-netlify-honeypot="bot-field"
-            // >
-            //   <FormItem label="Name">
-            //     {getFieldDecorator("name", {
-            //       rules: [
-            //         {
-            //           whitespace: true
-            //         }
-            //       ]
-            //     })(<Input name="name" />)}
-            //   </FormItem>
-            //   <FormItem label="E-mail">
-            //     {getFieldDecorator("email", {
-            //       rules: [
-            //         {
-            //           required: true,
-            //           message: "Please input your e-mail address!",
-            //           whitespace: true,
-            //           type: "email"
-            //         }
-            //       ]
-            //     })(<Input name="email" />)}
-            //   </FormItem>
-            //   <FormItem label="Message">
-            //     {getFieldDecorator("message", {
-            //       rules: [
-            //         { required: true, message: "Please input your message!", whitespace: true }
-            //       ]
-            //     })(
-            //       <TextArea name="message" placeholder="" autosize={{ minRows: 4, maxRows: 10 }} />
-            //     )}
-            //   </FormItem>
-            //   <FormItem>
-            //     <Button type="primary" htmlType="submit">
-            //       Submit
-            //     </Button>
-            //   </FormItem>
-            // </Form>
-
+            <p>We'll get back to you shortly! Phone <a href="tel:1-512-575-3379"> 1-512-575-3379</a> or Email: <a href="mailto:origin@graybeam.tech">origin@graybeam.tech</a></p>
             {/* --- STYLES --- */}
             <style jsx>{`
               .form {
