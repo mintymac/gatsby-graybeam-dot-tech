@@ -76,7 +76,7 @@ export const query = graphql`
   query IndexQuery {
     posts: allMarkdownRemark(
       filter: { fileAbsolutePath: { regex: "//posts/[0-9]+.*--/" } }
-      sort: { fields: [fields___prefix], order: DESC }
+      sort: { fields: { prefix: DESC } }
     ) {
       edges {
         node {
@@ -89,15 +89,6 @@ export const query = graphql`
             title
             category
             author
-            cover {
-              children {
-                ... on ImageSharp {
-                  fluid(maxWidth: 800, maxHeight: 360) {
-                    ...GatsbyImageSharpFluid_withWebp
-                  }
-                }
-              }
-            }
           }
         }
       }
