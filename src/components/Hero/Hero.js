@@ -99,7 +99,7 @@ const Hero = props => {
           }
         }
 
-        @from-width tablet {
+        @media (min-width: 768px) {
           .hero {
             background-image: url(${backgrounds.tablet});
           }
@@ -114,7 +114,7 @@ const Hero = props => {
           }
         }
 
-        @from-width desktop {
+        @media (min-width: 1024px) {
           .hero {
             background-image: url(${backgrounds.desktop});
           }

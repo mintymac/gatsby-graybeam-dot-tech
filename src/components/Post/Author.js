@@ -44,7 +44,7 @@ const Author = props => {
           font-size: 0.9em;
           line-height: 1.6;
         }
-        @from-width tablet {
+        @media (min-width: 768px) {
           .author {
             display: flex;
           }

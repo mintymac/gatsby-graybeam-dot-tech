@@ -39,13 +39,13 @@ const Headline = props => {
           }
         }
 
-        @from-width tablet {
+        @media (min-width: 768px) {
           h1 {
             font-size: ${`calc(${theme.font.size.xl} * 1.2)`};
           }
         }
 
-        @from-width desktop {
+        @media (min-width: 1024px) {
           h1 {
             font-size: ${`calc(${theme.font.size.xl} * 1.4)`};
           }

@@ -108,7 +108,7 @@ const PostShare = props => {
           margin: 0 1em 1em;
         }
 
-        @from-width tablet {
+        @media (min-width: 768px) {
           .share {
             flex-direction: row;
             margin: ${theme.space.inset.l};

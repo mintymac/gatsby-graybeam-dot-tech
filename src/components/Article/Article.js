@@ -14,13 +14,13 @@ const Article = props => {
           padding: ${theme.space.inset.default};
           margin: 0 auto;
         }
-        @from-width tablet {
+        @media (min-width: 768px) {
           .article {
             padding: ${`calc(${theme.space.default}) calc(${theme.space.default} * 2)`};
             max-width: ${theme.text.maxWidth.tablet};
           }
         }
-        @from-width desktop {
+        @media (min-width: 1024px) {
           .article {
             padding: ${`calc(${theme.space.default} * 2 + 90px) 0 calc(${
               theme.space.default

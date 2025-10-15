@@ -45,7 +45,7 @@ const Meta = props => {
           text-transform: uppercase;
           margin: ${theme.space.xs} ${theme.space.s} ${theme.space.xs} 0;
         }
-        @from-width tablet {
+        @media (min-width: 768px) {
           .meta {
             margin: ${`calc(${theme.space.m} * 1.5) 0 ${theme.space.m}`};
           }

@@ -209,7 +209,7 @@ class Menu extends React.Component {
             }
           }
 
-          @from-width desktop {
+          @media (min-width: 1024px) {
             .menu {
               border-top: none;
               background: transparent;

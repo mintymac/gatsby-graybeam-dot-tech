@@ -46,7 +46,7 @@ const Contact = () => {
                 margin-top: 0.2em;
               }
 
-              @from-width desktop {
+              @media (min-width: 1024px) {
                 .form :global(input) {
                   max-width: 50%;
                 }

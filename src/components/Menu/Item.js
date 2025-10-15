@@ -45,7 +45,7 @@ const Item = props => {
           display: none;
         }
 
-        @from-width desktop {
+        @media (min-width: 1024px) {
           .item :global(a) {
             color: ${theme.text.color.primary};
             padding: ${theme.space.inset.s};
