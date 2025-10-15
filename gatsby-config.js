@@ -30,24 +30,8 @@ const queries = [
   }
 ];
 
-module.exports = {
-  // pathPrefix: config.pathPrefix,
-  siteMetadata: {
-    title: config.siteTitle,
-    description: config.siteDescription,
-    siteUrl: config.siteUrl,
-    algolia: {
-      appId: process.env.ALGOLIA_APP_ID ? process.env.ALGOLIA_APP_ID : "",
-      searchOnlyApiKey: process.env.ALGOLIA_SEARCH_ONLY_API_KEY
-        ? process.env.ALGOLIA_SEARCH_ONLY_API_KEY
-        : "",
-      indexName: process.env.ALGOLIA_INDEX_NAME ? process.env.ALGOLIA_INDEX_NAME : ""
-    },
-    facebook: {
-      appId: process.env.FB_APP_ID ? process.env.FB_APP_ID : ""
-    }
-  },
-  plugins: [
+// Base plugins that are always included
+const plugins = [
     `gatsby-plugin-image`,
     `gatsby-plugin-sharp`,
     `gatsby-transformer-sharp`,
@@ -56,16 +40,6 @@ module.exports = {
       resolve: `gatsby-plugin-layout`,
       options: {
         component: require.resolve(`./src/layouts/`)
-      }
-    },
-    {
-      resolve: `gatsby-plugin-algolia`,
-      options: {
-        appId: process.env.ALGOLIA_APP_ID ? process.env.ALGOLIA_APP_ID : "",
-        apiKey: process.env.ALGOLIA_ADMIN_API_KEY ? process.env.ALGOLIA_ADMIN_API_KEY : "",
-        indexName: process.env.ALGOLIA_INDEX_NAME ? process.env.ALGOLIA_INDEX_NAME : "",
-        queries,
-        chunkSize: 10000 // default: 1000
       }
     },
     {
@@ -230,7 +204,7 @@ module.exports = {
               {
                 allMarkdownRemark(
                   limit: 1000,
-                  sort: { fields___prefix: DESC },
+                  sort: { fields: { prefix: DESC } },
                   filter: {
                     fields: {
                       prefix: { ne: null },
@@ -271,5 +245,38 @@ module.exports = {
         include: /svg-icons/
       }
     }
-  ]
+];
+
+// Conditionally add Algolia plugin only if credentials are configured
+if (process.env.ALGOLIA_APP_ID && process.env.ALGOLIA_ADMIN_API_KEY && process.env.ALGOLIA_INDEX_NAME) {
+  plugins.push({
+    resolve: `gatsby-plugin-algolia`,
+    options: {
+      appId: process.env.ALGOLIA_APP_ID,
+      apiKey: process.env.ALGOLIA_ADMIN_API_KEY,
+      indexName: process.env.ALGOLIA_INDEX_NAME,
+      queries,
+      chunkSize: 10000
+    }
+  });
+}
+
+module.exports = {
+  // pathPrefix: config.pathPrefix,
+  siteMetadata: {
+    title: config.siteTitle,
+    description: config.siteDescription,
+    siteUrl: config.siteUrl,
+    algolia: {
+      appId: process.env.ALGOLIA_APP_ID ? process.env.ALGOLIA_APP_ID : "",
+      searchOnlyApiKey: process.env.ALGOLIA_SEARCH_ONLY_API_KEY
+        ? process.env.ALGOLIA_SEARCH_ONLY_API_KEY
+        : "",
+      indexName: process.env.ALGOLIA_INDEX_NAME ? process.env.ALGOLIA_INDEX_NAME : ""
+    },
+    facebook: {
+      appId: process.env.FB_APP_ID ? process.env.FB_APP_ID : ""
+    }
+  },
+  plugins
 };
