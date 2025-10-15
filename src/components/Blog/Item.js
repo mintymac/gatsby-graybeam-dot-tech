@@ -2,7 +2,6 @@ import { FaArrowRight } from "react-icons/fa/";
 import { FaCalendar } from "react-icons/fa/";
 import { FaTag } from "react-icons/fa/";
 import { FaUser } from "react-icons/fa/";
-import Img from "gatsby-image";
 import { Link } from "gatsby";
 import PropTypes from "prop-types";
 import React from "react";
@@ -16,10 +15,7 @@ const Item = props => {
       frontmatter: {
         title,
         category,
-        author,
-        cover: {
-          children: [{ fluid }]
-        }
+        author
       }
     }
   } = props;
@@ -28,9 +24,6 @@ const Item = props => {
     <React.Fragment>
       <li>
         <Link to={slug} key={slug} className="link">
-          <div className="gatsby-image-outer-wrapper">
-            <Img fluid={fluid} />
-          </div>
           <h1>
             {title} <FaArrowRight className="arrow" />
           </h1>
@@ -66,16 +59,6 @@ const Item = props => {
           position: relative;
           transition: all ${theme.time.duration.default};
           background: transparent;
-        }
-
-        li :global(.gatsby-image-outer-wrapper) {
-          border-radius: ${theme.size.radius.default};
-          border: 1px solid ${theme.line.color};
-          overflow: hidden;
-        }
-
-        li :global(.gatsby-image-outer-wrapper img) {
-          z-index: -1;
         }
 
         li::after {
@@ -205,10 +188,6 @@ const Item = props => {
             bottom: ${`calc(${theme.space.default} * -2.5)`};
           }
 
-          li:hover :global(.gatsby-image-wrapper) {
-            transform: scale(1.1);
-          }
-
           li:hover h1 {
             color: ${theme.blog.h1.hoverColor};
           }
@@ -217,10 +196,6 @@ const Item = props => {
             opacity: 1;
             stroke: ${theme.color.special.attention};
             transform: translateX(0);
-          }
-
-          li :global(.gatsby-image-wrapper) {
-            transition: all ${theme.time.duration.default};
           }
 
           li :global(.arrow) {

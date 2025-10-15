@@ -190,24 +190,22 @@ class Menu extends React.Component {
           }
 
           @below desktop {
-            .menu {
-              &::after {
-                position: absolute;
-                content: "";
-                left: ${theme.space.m};
-                right: ${theme.space.m};
-                top: 0;
-                height: 1px;
-                background: ${theme.color.brand.primary};
-              }
+            .menu::after {
+              position: absolute;
+              content: "";
+              left: ${theme.space.m};
+              right: ${theme.space.m};
+              top: 0;
+              height: 1px;
+              background: ${theme.color.brand.primary};
+            }
 
-              &.open {
-                padding: ${theme.space.inset.m};
-              }
+            .menu.open {
+              padding: ${theme.space.inset.m};
+            }
 
-              :global(.homepage):not(.fixed) & {
-                bottom: -100px;
-              }
+            :global(.homepage):not(.fixed) .menu {
+              bottom: -100px;
             }
           }
 
@@ -241,37 +239,36 @@ class Menu extends React.Component {
               padding: ${theme.space.m};
               border-radius: ${theme.size.radius.small};
               border-top-right-radius: 0;
+            }
 
+            .hiddenItemList:after {
+              content: "";
+              background: ${theme.background.color.primary};
+              z-index: 10;
+              top: -10px;
+              right: -1px;
+              width: 44px;
+              height: 10px;
+              position: absolute;
+              border-left: 1px solid ${theme.line.color};
+              border-right: 1px solid ${theme.line.color};
+            }
 
-              &:after {
-                content: "";
-                background: ${theme.background.color.primary};
-                z-index: 10;
-                top: -10px;
-                right: -1px;
-                width: 44px;
-                height: 10px;
-                position: absolute;
-                border-left: 1px solid ${theme.line.color};
-                border-right: 1px solid ${theme.line.color};
-              }
+            :global(.homepage):not(.fixed) .hiddenItemList {
+              border: 1px solid transparent;
+              background: color(white alpha(-10%));
+              top: 50px;
+            }
 
-              :global(.homepage):not(.fixed) & {
-                border: 1px solid transparent;
-                background: color(white alpha(-10%));
-                top: 50px;
+            :global(.homepage):not(.fixed) .hiddenItemList:after {
+              top: -11px;
+              border-left: 1px solid transparent;
+              border-right: 1px solid transparent;
+              background: color(white alpha(-10%));
+            }
 
-                &:after {
-                  top: -11px;
-                  border-left: 1px solid transparent;
-                  border-right: 1px solid transparent;
-                  background: color(white alpha(-10%));
-                }
-              }
-
-              :global(.fixed) & {
-                top: 44px;
-              }
+            :global(.fixed) .hiddenItemList {
+              top: 44px;
             }
           }
         `}</style>
