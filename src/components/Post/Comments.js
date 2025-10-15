@@ -1,18 +1,25 @@
 import React from "react";
 import PropTypes from "prop-types";
-import FacebookProvider, { Comments as FBComments } from "react-facebook";
+import { FacebookProvider, Comments as FBComments } from "react-facebook";
 
 import config from "../../../content/meta/config";
 
 const Comments = props => {
   const { facebook, slug, theme } = props;
+  const [isClient, setIsClient] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   return (
     <React.Fragment>
       <div id="post-comments" className="comments">
-        <FacebookProvider appId={facebook.appId}>
-          <FBComments href={`${config.siteUrl}${slug}`} width="100%" colorscheme="light" />
-        </FacebookProvider>
+        {isClient && (
+          <FacebookProvider appId={facebook.appId}>
+            <FBComments href={`${config.siteUrl}${slug}`} width="100%" colorscheme="light" />
+          </FacebookProvider>
+        )}
       </div>
 
       {/* --- STYLES --- */}
