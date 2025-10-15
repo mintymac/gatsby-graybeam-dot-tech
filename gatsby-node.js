@@ -1,8 +1,8 @@
 //const webpack = require("webpack");
 const _ = require("lodash");
-const BundleAnalyzerPlugin = require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
+// const BundleAnalyzerPlugin = require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
 const path = require("path");
-const Promise = require("bluebird");
+// const Promise = require("bluebird");
 
 const { createFilePath } = require(`gatsby-source-filesystem`);
 
@@ -55,7 +55,7 @@ exports.createPages = ({ graphql, actions }) => {
           {
             allMarkdownRemark(
               ` + filters + `
-              sort: { fields: [fields___prefix], order: DESC }
+              sort: { fields: { prefix: DESC } }
               limit: 1000
             ) {
               edges {
@@ -149,19 +149,20 @@ exports.createPages = ({ graphql, actions }) => {
   });
 };
 
-exports.onCreateWebpackConfig = ({ stage, actions }, options) => {
-  switch (stage) {
-    case `build-javascript`:
-      actions.setWebpackConfig({
-        plugins: [
-          new BundleAnalyzerPlugin({
-            analyzerMode: "static",
-            reportFilename: "./report/treemap.html",
-            openAnalyzer: true,
-            logLevel: "error",
-            defaultSizes: "gzip"
-          })
-        ]
-      });
-  }
-};
+// Commented out for Gatsby v5 - webpack-bundle-analyzer not needed for basic builds
+// exports.onCreateWebpackConfig = ({ stage, actions }, options) => {
+//   switch (stage) {
+//     case `build-javascript`:
+//       actions.setWebpackConfig({
+//         plugins: [
+//           new BundleAnalyzerPlugin({
+//             analyzerMode: "static",
+//             reportFilename: "./report/treemap.html",
+//             openAnalyzer: true,
+//             logLevel: "error",
+//             defaultSizes: "gzip"
+//           })
+//         ]
+//       });
+//   }
+// };

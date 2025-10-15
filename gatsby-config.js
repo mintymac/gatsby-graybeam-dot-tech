@@ -48,8 +48,10 @@ module.exports = {
     }
   },
   plugins: [
+    `gatsby-plugin-image`,
+    `gatsby-plugin-sharp`,
+    `gatsby-transformer-sharp`,
     `gatsby-plugin-styled-jsx`, // the plugin's code is inserted directly to gatsby-node.js and gatsby-ssr.js files
-    `gatsby-plugin-styled-jsx-postcss`, // as above
     {
       resolve: `gatsby-plugin-layout`,
       options: {
@@ -98,12 +100,12 @@ module.exports = {
       resolve: `gatsby-transformer-remark`,
       options: {
         plugins: [
-          `gatsby-plugin-sharp`,
           {
             resolve: `gatsby-remark-images`,
             options: {
               maxWidth: 800,
-              backgroundColor: "transparent"
+              backgroundColor: "transparent",
+              linkImagesToOriginal: false
             }
           },
           {
@@ -138,8 +140,6 @@ module.exports = {
         ]
       }
     },
-    `gatsby-plugin-sharp`,
-    `gatsby-transformer-sharp`,
     `gatsby-plugin-react-helmet`,
     `gatsby-plugin-catch-links`,
     {
@@ -194,7 +194,7 @@ module.exports = {
     {
       resolve: `gatsby-plugin-google-analytics`,
       options: {
-        trackingId: process.env.GOOGLE_ANALYTICS_ID
+        trackingId: process.env.GOOGLE_ANALYTICS_ID || "UA-XXXXXXXXX-X"
       }
     },
     {
@@ -214,6 +214,7 @@ module.exports = {
         `,
         feeds: [
           {
+            title: "Gray Beam Technology RSS Feed",
             serialize: ({ query: { site, allMarkdownRemark } }) => {
               return allMarkdownRemark.edges.map(edge => {
                 return Object.assign({}, edge.node.frontmatter, {
@@ -229,7 +230,7 @@ module.exports = {
               {
                 allMarkdownRemark(
                   limit: 1000,
-                  sort: { order: DESC, fields: [fields___prefix] },
+                  sort: { fields___prefix: DESC },
                   filter: {
                     fields: {
                       prefix: { ne: null },

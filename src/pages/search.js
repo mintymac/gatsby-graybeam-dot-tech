@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import React from "react";
 import { graphql } from "gatsby";
-require("core-js/fn/array/find");
+// require("core-js/fn/array/find"); // Removed for Gatsby v5 - Array.find is natively supported
 
 import Article from "../components/Article";
 import Search from "../components/Search";
