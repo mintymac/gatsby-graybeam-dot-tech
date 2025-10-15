@@ -96,11 +96,11 @@ const PostShare = props => {
         .links {
           display: flex;
           flex-direction: row;
+        }
 
-          :global(.SocialMediaShareButton) {
-            margin: 0 0.8em;
-            cursor: pointer;
-          }
+        .links :global(.SocialMediaShareButton) {
+          margin: 0 0.8em;
+          cursor: pointer;
         }
 
         .label {

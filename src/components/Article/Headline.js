@@ -15,19 +15,19 @@ const Headline = props => {
           margin: ${theme.space.stack.l};
           animation-name: headlineEntry;
           animation-duration: ${theme.time.duration.long};
+        }
 
-          :global(span) {
-            font-weight: ${theme.font.weight.standard};
-            display: block;
-            font-size: 0.5em;
-            letter-spacing: 0;
-            margin: ${theme.space.stack.xs};
-          }
+        h1 :global(span) {
+          font-weight: ${theme.font.weight.standard};
+          display: block;
+          font-size: 0.5em;
+          letter-spacing: 0;
+          margin: ${theme.space.stack.xs};
+        }
 
-          :global(svg) {
-            height: 0.75em;
-            fill: ${theme.color.brand.primary};
-          }
+        h1 :global(svg) {
+          height: 0.75em;
+          fill: ${theme.color.brand.primary};
         }
 
         @keyframes headlineEntry {

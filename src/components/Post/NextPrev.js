@@ -47,23 +47,23 @@ const NextPrev = props => {
           padding: 0 ${theme.space.m} ${theme.space.l};
           border-bottom: 1px solid ${theme.line.color};
           margin: ${theme.space.stack.l};
+        }
 
-          :global(a) {
-            display: flex;
-          }
+        .links :global(a) {
+          display: flex;
+        }
 
-          :global(a:nth-child(2)) {
-            margin: ${theme.space.default} 0 0;
-          }
+        .links :global(a:nth-child(2)) {
+          margin: ${theme.space.default} 0 0;
+        }
 
-          :global(svg) {
-            fill: ${theme.color.special.attention};
-            width: ${theme.space.m};
-            height: ${theme.space.m};
-            flex-shrink: 0;
-            flex-grow: 0;
-            margin: ${theme.space.inline.m};
-          }
+        .links :global(svg) {
+          fill: ${theme.color.special.attention};
+          width: ${theme.space.m};
+          height: ${theme.space.m};
+          flex-shrink: 0;
+          flex-grow: 0;
+          margin: ${theme.space.inline.m};
         }
 
         h4 {
@@ -83,18 +83,19 @@ const NextPrev = props => {
           .links {
             flex-direction: row-reverse;
             justify-content: center;
+          }
 
-            :global(a) {
-              flex-basis: 50%;
-            }
+          .links :global(a) {
+            flex-basis: 50%;
+          }
 
-            :global(a:nth-child(2)) {
-              margin: 0;
-            }
-            :global(svg) {
-              transition: all 0.5s;
-              margin: ${theme.space.inline.s};
-            }
+          .links :global(a:nth-child(2)) {
+            margin: 0;
+          }
+
+          .links :global(svg) {
+            transition: all 0.5s;
+            margin: ${theme.space.inline.s};
           }
 
           @media (hover: hover) {

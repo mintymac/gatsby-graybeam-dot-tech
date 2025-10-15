@@ -41,22 +41,23 @@ const Hero = props => {
           color: ${theme.hero.h1.color};
           line-height: ${theme.hero.h1.lineHeight};
           text-remove-gap: both 0 "Open Sans";
+        }
 
-          :global(strong) {
-            position: relative;
+        h1 :global(strong) {
+          position: relative;
+        }
 
-            &::after,
-            &::before {
-              content: "›";
-              color: ${theme.text.color.attention};
-              margin: 0 ${theme.space.xs} 0 0;
-              text-shadow: 0 0 ${theme.space.s} ${theme.color.neutral.gray.k};
-            }
-            &::after {
-              content: "‹";
-              margin: 0 0 0 ${theme.space.xs};
-            }
-          }
+        h1 :global(strong)::after,
+        h1 :global(strong)::before {
+          content: "›";
+          color: ${theme.text.color.attention};
+          margin: 0 ${theme.space.xs} 0 0;
+          text-shadow: 0 0 ${theme.space.s} ${theme.color.neutral.gray.k};
+        }
+
+        h1 :global(strong)::after {
+          content: "‹";
+          margin: 0 0 0 ${theme.space.xs};
         }
 
         button {
@@ -68,22 +69,22 @@ const Hero = props => {
           cursor: pointer;
           width: ${theme.space.xl};
           height: ${theme.space.xl};
+        }
 
-          &:focus {
-            outline-style: none;
-            background: ${theme.color.brand.primary.active};
-          }
+        button:focus {
+          outline-style: none;
+          background: ${theme.color.brand.primary.active};
+        }
 
-          :global(svg) {
-            position: relative;
-            top: 5px;
-            fill: ${theme.color.neutral.white};
-            stroke-width: 40;
-            stroke: ${theme.color.neutral.white};
-            animation-duration: ${theme.time.duration.long};
-            animation-name: buttonIconMove;
-            animation-iteration-count: infinite;
-          }
+        button :global(svg) {
+          position: relative;
+          top: 5px;
+          fill: ${theme.color.neutral.white};
+          stroke-width: 40;
+          stroke: ${theme.color.neutral.white};
+          animation-duration: ${theme.time.duration.long};
+          animation-name: buttonIconMove;
+          animation-iteration-count: infinite;
         }
 
         @keyframes buttonIconMove {
