@@ -78,23 +78,23 @@ class Header extends React.Component {
             top: 0;
             width: 100%;
             align-items: center;
+          }
 
-            :global(a.logoType) {
-              align-items: center;
-              display: flex;
-              flex-direction: "column";
-              color: ${theme.text.color.primary};
+          .header :global(a.logoType) {
+            align-items: center;
+            display: flex;
+            flex-direction: "column";
+            color: ${theme.text.color.primary};
+          }
 
-              .logo {
-                flex-shrink: 0;
-              }
-            }
+          .header :global(a.logoType) .logo {
+            flex-shrink: 0;
+          }
 
-            &.homepage {
-              position: absolute;
-              background-color: transparent;
-              height: ${theme.header.height.homepage};
-            }
+          .header.homepage {
+            position: absolute;
+            background-color: transparent;
+            height: ${theme.header.height.homepage};
           }
 
           h1 {
@@ -119,15 +119,15 @@ class Header extends React.Component {
             overflow: hidden;
             width: 44px;
             transition: all 0.5s;
+          }
 
-            .homepage & {
-              height: 60px;
-              width: 60px;
-            }
+          .homepage .logo {
+            height: 60px;
+            width: 60px;
+          }
 
-            img {
-              width: 100%;
-            }
+          .logo img {
+            width: 100%;
           }
 
           .sensor {
@@ -144,26 +144,25 @@ class Header extends React.Component {
           @from-width tablet {
             .header {
               padding: ${theme.space.inset.l};
+            }
 
-              &.homepage {
-                height: ${theme.header.height.homepage};
-              }
+            .header.homepage {
+              height: ${theme.header.height.homepage};
             }
           }
 
           @below desktop {
-            .header.homepage {
-              .logo {
-                border: none;
-              }
+            .header.homepage .logo {
+              border: none;
+            }
 
-              :global(a.logoType),
-              h1 {
-                color: ${theme.color.neutral.white};
-              }
-              h2 {
-                color: ${theme.color.neutral.gray.d};
-              }
+            .header.homepage :global(a.logoType),
+            .header.homepage h1 {
+              color: ${theme.color.neutral.white};
+            }
+
+            .header.homepage h2 {
+              color: ${theme.color.neutral.gray.d};
             }
           }
 
@@ -177,35 +176,34 @@ class Header extends React.Component {
               width: 100%;
               justify-content: space-between;
               transition: padding 0.5s;
+            }
 
-              &.fixed {
-                height: ${theme.header.height.fixed};
-                background-color: ${theme.color.neutral.white};
-                left: 0;
-                padding: 0 ${theme.space.m};
-                position: fixed;
-                top: 0;
-                width: 100%;
-                z-index: 1;
+            .header.fixed {
+              height: ${theme.header.height.fixed};
+              background-color: ${theme.color.neutral.white};
+              left: 0;
+              padding: 0 ${theme.space.m};
+              position: fixed;
+              top: 0;
+              width: 100%;
+              z-index: 1;
+            }
 
-                h1 {
-                  margin: ${theme.space.stack.xxs};
-                }
+            .header.fixed h1 {
+              margin: ${theme.space.stack.xxs};
+            }
 
-                h2 {
-                  display: none;
-                }
-              }
+            .header.fixed h2 {
+              display: none;
+            }
 
-              &.homepage:not(.fixed) {
-                :global(a.logoType),
-                h1 {
-                  color: ${theme.color.neutral.white};
-                }
-                h2 {
-                  color: ${theme.color.neutral.gray.d};
-                }
-              }
+            .header.homepage:not(.fixed) :global(a.logoType),
+            .header.homepage:not(.fixed) h1 {
+              color: ${theme.color.neutral.white};
+            }
+
+            .header.homepage:not(.fixed) h2 {
+              color: ${theme.color.neutral.gray.d};
             }
 
             .header :global(a.logoType) {
@@ -217,15 +215,15 @@ class Header extends React.Component {
 
             .logo {
               margin: ${theme.space.inline.default};
+            }
 
-              .fixed & {
-                height: 36px;
-                width: 36px;
-              }
+            .fixed .logo {
+              height: 36px;
+              width: 36px;
+            }
 
-              .header.homepage:not(.fixed) & {
-                border: none;
-              }
+            .header.homepage:not(.fixed) .logo {
+              border: none;
             }
 
             h2 {
