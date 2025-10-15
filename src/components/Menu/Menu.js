@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-require("core-js/fn/array/from");
+// Removed core-js import - Array.from is natively supported in modern browsers and Gatsby v5
 
 import { FaHome } from "react-icons/fa/";
 import { FaSearch } from "react-icons/fa/";

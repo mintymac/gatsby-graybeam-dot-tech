@@ -31,24 +31,24 @@ const Expand = props => {
             overflow: hidden;
             z-index: 1;
             transform: translateX(-50%);
+          }
 
-            &:focus {
-              outline: none;
+          .more:focus {
+            outline: none;
+          }
 
-              :global(svg) {
-                fill: ${theme.color.brand.primary};
-              }
-            }
+          .more:focus :global(svg) {
+            fill: ${theme.color.brand.primary};
+          }
 
-            :global(svg) {
-              transition: all 0.5s;
-              transform: rotateZ(180deg);
-              fill: ${theme.color.special.attention};
-            }
+          .more :global(svg) {
+            transition: all 0.5s;
+            transform: rotateZ(180deg);
+            fill: ${theme.color.special.attention};
+          }
 
-            :global(.open) & :global(svg) {
-              transform: rotateZ(0deg);
-            }
+          :global(.open) .more :global(svg) {
+            transform: rotateZ(0deg);
           }
         }
 
@@ -68,43 +68,43 @@ const Expand = props => {
             align-items: center;
             padding: 0;
             z-index: 1;
+          }
 
-            &:focus,
-            &:hover {
-              outline: none;
-            }
+          .more:focus,
+          .more:hover {
+            outline: none;
+          }
 
-            :global(svg) {
-              transition: all ${theme.time.duration.default};
-            }
+          .more :global(svg) {
+            transition: all ${theme.time.duration.default};
+          }
 
-            :global(.homepage) & {
-              border: 1px solid transparent;
-              background-color: color(white alpha(-90%));
+          :global(.homepage) .more {
+            border: 1px solid transparent;
+            background-color: color(white alpha(-90%));
+          }
 
-              &:hover {
-                background-color: color(white alpha(-60%));
-              }
-            }
+          :global(.homepage) .more:hover {
+            background-color: color(white alpha(-60%));
+          }
 
-            :global(.open) & {
-              background-color: color(white alpha(-10%));
-              border-bottom-left-radius: 0;
-              border-bottom-right-radius: 0;
+          :global(.open) .more {
+            background-color: color(white alpha(-10%));
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+          }
 
-              &:hover {
-                background-color: color(white alpha(-10%));
-              }
+          :global(.open) .more:hover {
+            background-color: color(white alpha(-10%));
+          }
 
-              :global(svg) {
-                transform: rotate(180deg);
-              }
-            }
+          :global(.open) .more :global(svg) {
+            transform: rotate(180deg);
+          }
 
-            :global(.fixed) & {
-              border: 1px solid ${theme.line.color};
-              height: 30px;
-            }
+          :global(.fixed) .more {
+            border: 1px solid ${theme.line.color};
+            height: 30px;
           }
         }
       `}</style>
