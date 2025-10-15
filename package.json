@@ -3,6 +3,9 @@
   "version": "2.0.0",
   "author": "M Chambers <origin@graybeam.tech>",
   "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "dependencies": {
     "@gatsby-contrib/gatsby-plugin-elasticlunr-search": "^2.2.1",
     "ajv": "^5.0.0",
