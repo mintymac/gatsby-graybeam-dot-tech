@@ -6,23 +6,27 @@ import Hit from "./Hit";
 
 const Search = props => {
   const { algolia, theme } = props;
+  const [isClient, setIsClient] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   return (
     <React.Fragment>
       <div className="search">
-        {algolia &&
-          algolia.appId && (
-            <InstantSearch
-              appId={algolia.appId}
-              apiKey={algolia.searchOnlyApiKey}
-              indexName={algolia.indexName}
-            >
-              <SearchBox translations={{ placeholder: "Search" }} />
-              <Stats />
-              <Hits hitComponent={Hit} />
-              <Pagination />
-            </InstantSearch>
-          )}
+        {isClient && algolia && algolia.appId && (
+          <InstantSearch
+            appId={algolia.appId}
+            apiKey={algolia.searchOnlyApiKey}
+            indexName={algolia.indexName}
+          >
+            <SearchBox translations={{ placeholder: "Search" }} />
+            <Stats />
+            <Hits hitComponent={Hit} />
+            <Pagination />
+          </InstantSearch>
+        )}
       </div>
 
       {/* --- STYLES --- */}
