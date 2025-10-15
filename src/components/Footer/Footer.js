@@ -41,7 +41,7 @@ const Footer = props => {
           content: "";
         }
 
-        @from-width desktop {
+        @media (min-width: 1024px) {
           .footer {
             padding: 0 1em 1.5em;
           }

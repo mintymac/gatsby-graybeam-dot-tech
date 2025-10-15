@@ -79,7 +79,7 @@ const NextPrev = props => {
           margin-top: 0.5em;
         }
 
-        @from-width desktop {
+        @media (min-width: 1024px) {
           .links {
             flex-direction: row-reverse;
             justify-content: center;

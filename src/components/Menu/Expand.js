@@ -52,7 +52,7 @@ const Expand = props => {
           }
         }
 
-        @from-width desktop {
+        @media (min-width: 1024px) {
           .more {
             flex-shrink: 0;
             flex-grow: 0;

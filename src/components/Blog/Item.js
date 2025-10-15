@@ -124,7 +124,7 @@ const Item = props => {
           text-remove-gap: both;
         }
 
-        @from-width tablet {
+        @media (min-width: 768px) {
           li {
             margin: ${`calc(${theme.space.default} * 3) 0 calc(${theme.space.default} * 4)`};
             padding: ${theme.space.default};
@@ -150,7 +150,7 @@ const Item = props => {
             padding: 0 ${theme.space.default};
           }
         }
-        @from-width desktop {
+        @media (min-width: 1024px) {
           li {
             margin: ${`calc(${theme.space.default} * 4) 0 calc(${theme.space.default} * 5)`};
             padding: 0 0 ${`calc(${theme.space.default} * 2)`};

@@ -141,7 +141,7 @@ class Header extends React.Component {
             top: ${path === "/" ? theme.header.height.homepage : theme.header.height.default};
           }
 
-          @from-width tablet {
+          @media (min-width: 768px) {
             .header {
               padding: ${theme.space.inset.l};
             }
@@ -166,7 +166,7 @@ class Header extends React.Component {
             }
           }
 
-          @from-width desktop {
+          @media (min-width: 1024px) {
             .header {
               align-items: center;
               background-color: ${theme.color.neutral.white};
