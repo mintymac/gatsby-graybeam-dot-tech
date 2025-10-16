@@ -25,7 +25,7 @@
     "gatsby-plugin-react-svg": "^3.3.0",
     "gatsby-plugin-sharp": "^5.13.1",
     "gatsby-plugin-sitemap": "^6.13.1",
-    "gatsby-plugin-styled-jsx": "^6.13.1",
+    "gatsby-plugin-styled-jsx": "^6.15.0",
     "gatsby-react-router-scroll": "^6.13.1",
     "gatsby-remark-copy-linked-files": "^6.13.1",
     "gatsby-remark-emojis": "^0.4.3",
