@@ -1,0 +1,33 @@
+---
+import { site } from "../data/site";
+---
+
+<footer class="border-t border-[#d0d0d8] dark:border-[#222332] mt-16">
+  <div class="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+    <div class="flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-[#909098] dark:text-[#606068]">
+      <div>{site.footer.copyright}</div>
+      <div class="flex items-center gap-4">
+        <a
+          href={`mailto:${site.author.email}`}
+          class="hover:text-brand-primary dark:hover:text-brand-primary-light transition-colors"
+        >
+          {site.author.email}
+        </a>
+        <a
+          href={site.social.github}
+          class="hover:text-brand-primary dark:hover:text-brand-primary-light transition-colors"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          GitHub
+        </a>
+        <a
+          href="/rss.xml"
+          class="hover:text-brand-primary dark:hover:text-brand-primary-light transition-colors"
+        >
+          RSS
+        </a>
+      </div>
+    </div>
+  </div>
+</footer>

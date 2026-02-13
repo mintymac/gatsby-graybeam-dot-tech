@@ -4,94 +4,98 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Gatsby v2 blog site for Gray Beam Technology based on the HeroBlog starter. It uses React 16.8, styled-jsx for CSS-in-JS, and markdown for content management.
+This is an Astro blog site for Gray Beam Technology. It uses Astro 5, Tailwind CSS with @tailwindcss/typography, and markdown content collections.
 
 ## Development Commands
 
 ### Essential Commands
-- `npm run develop` - Start development server at http://localhost:8000
-- `npm run build` - Build production site to /public directory
-- `npm run devhost` - Start dev server on network (192.168.0.112)
-
-### Code Quality
-- `npm run lint` - Run ESLint on all JS/JSX files in src/
-- `npm run lint-errors` - Show only ESLint errors (quiet mode)
-- `npm run format` - Format code with Prettier
-- `npm run stylelint` - Lint styled-jsx CSS
-
-### Utilities
-- `npm run generate-app-icons` - Generate app icons from source images
+- `npm run dev` - Start development server (http://localhost:4321)
+- `npm run build` - Build production site to /dist directory
+- `npm run preview` - Preview built site locally
 
 ## Architecture
 
 ### Content Management
-Content is organized in markdown files under `/content`:
-- **Posts**: `/content/posts/` - Blog posts with filename format `YYYY-MM-DD--slug/index.md`
-- **Pages**: `/content/pages/` - Static pages with numeric prefix for ordering (e.g., `1--about/index.md`)
-- **Parts**: `/content/parts/` - Reusable content fragments (author bio, footnote)
-- **Meta**: `/content/meta/config.js` - Site configuration
+Content is organized in Astro content collections under `/src/content`:
+- **Blog**: `/src/content/blog/` - Blog posts as `.md` files with date in frontmatter
+- **Pages**: `/src/content/pages/` - Static pages (about, privacy) with order field
 
-### Slug Generation
-The site uses a custom slug generation system in `gatsby-node.js:9-36`:
-- Extracts date prefix from filenames (before `--` separator)
-- Creates clean slugs by removing prefixes
-- Pages with numeric prefixes are ordered in menu
-- Draft posts (without date prefix) are excluded from production builds
+### Content Collection Schemas (`src/content/config.ts`)
+- **Blog**: title (string), category (string?), cover (string?), author (string?), date (date), draft (boolean)
+- **Pages**: title (string), menuTitle (string?), order (number?)
 
-### Page Generation
-Three template types in `/src/templates/`:
-- **PostTemplate.js** - Individual blog posts with prev/next navigation
-- **PageTemplate.js** - Static pages
-- **CategoryTemplate.js** - Category archive pages
+### URL Routing
+Posts and pages both live at root-level URLs (`/nature/`, `/about/`). The `[slug].astro` dynamic route handles both blog posts and pages via `getStaticPaths`.
 
 ### Styling System
-- **styled-jsx** for component-scoped CSS with PostCSS processing
-- **Theme object** generated from `/src/theme/theme.yaml`
-- PostCSS plugins: nested, cssnext, media queries, text-remove-gap
-- Custom breakpoints: tablet (600px), desktop (1024px)
+- **Tailwind CSS** with class-based dark mode
+- **@tailwindcss/typography** for prose styling of markdown content
+- Brand colors defined in `tailwind.config.mjs` under `colors.brand`
+- Theme tokens from `BRAND_IDENTITY.md` (pending brand exploration)
 
 ### Component Structure
-Components in `/src/components/` are organized by feature:
-- Each component typically has its own directory
-- React Context used for theme, screen width, and font loading state
-- Main layout wrapper at `/src/layouts/index.js` provides app-wide context
+All components in `/src/components/` are Astro components:
+- `Header.astro` - Nav with page links, dark mode toggle
+- `Footer.astro` - Copyright, contact, social links
+- `BlogCard.astro` - Post listing item
+- `CategoryBadge.astro` - Category pill with link
+- `PostMeta.astro` - Date, author, category display
+- `PrevNext.astro` - Post navigation
+- `ThemeToggle.astro` - Dark/light mode toggle
+- `Search.astro` - Pagefind search UI
 
-### Data Layer
-- GraphQL queries for content and configuration
-- Algolia integration for full-text search (configured via `.env`)
-- RSS feed generation for blog posts
-- Facebook comments integration
+### Layouts
+- `BaseLayout.astro` - HTML shell, head, fonts, OG tags, header/footer
+- `BlogPost.astro` - Post layout with prose styling, author bio, Giscus comments, prev/next
+- `Page.astro` - Static page layout
 
-### Build Configuration
-- **gatsby-node.js** - Custom node APIs for page/slug creation, webpack config
-- **gatsby-config.js** - Plugin configuration and site metadata
-- **gatsby-browser.js** - Browser APIs
-- Draft posts excluded in production (via `ACTIVE_ENV` or `NODE_ENV`)
+### Site Data
+- `src/data/site.ts` - Site metadata, author info, social links
+
+### Features
+- **Pagefind** - Client-side search, indexed at build time
+- **Giscus** - GitHub Discussions-based comments (needs repo-id/category-id configuration)
+- **RSS** - At `/rss.xml` via `@astrojs/rss`
+- **Sitemap** - Auto-generated by `@astrojs/sitemap`
+- **Dark mode** - Class-based with localStorage persistence
+- **Syntax highlighting** - Shiki with one-dark-pro theme
+- **Emoji** - Via remark-gemoji (`:100:` renders as emoji)
+
+### Build & Deploy
+- **Netlify** deployment configured in `netlify.toml`
+- Build command: `npm run build`, publish dir: `dist`
+- Static output mode
 
 ## Environment Variables
 
-Required in `.env` file (already configured but listed for reference):
-- `GOOGLE_ANALYTICS_ID` - Google Analytics tracking
-- `ALGOLIA_APP_ID`, `ALGOLIA_SEARCH_ONLY_API_KEY`, `ALGOLIA_ADMIN_API_KEY`, `ALGOLIA_INDEX_NAME` - Search
-- `FB_APP_ID` - Facebook comments and sharing
+- `GOOGLE_API_KEY` or `VERTEX_API_KEY` - For brand exploration image generation (Phase 1)
 
 ## Key Patterns
 
 ### Adding New Blog Posts
-Create directory under `/content/posts/` with format `YYYY-MM-DD--slug-name/index.md`. Include frontmatter:
+Create `.md` file in `/src/content/blog/` with frontmatter:
 ```markdown
 ---
 title: "Post Title"
 category: "Category Name"
 author: "Author Name"
+date: 2026-01-01
 ---
 ```
+Posts with images use directory format: `blog/post-name/index.md` with images alongside.
 
 ### Adding New Pages
-Create directory under `/content/pages/` with format `N--page-name/index.md` where N is numeric order. Pages are auto-added to navigation menu.
+Create `.md` file in `/src/content/pages/` with frontmatter:
+```markdown
+---
+title: Page Title
+menuTitle: Nav Label
+order: 3
+---
+```
+Pages with `order` field appear in the header navigation.
 
-### Working with Styles
-Use styled-jsx within components. Theme variables available via `ThemeContext`. PostCSS syntax supported (nested selectors, cssnext features).
-
-### GraphQL Queries
-Component queries use `gatsby` StaticQuery or page queries. Source instance names: "posts", "pages", "parts", "images".
+## Pending Work
+- Brand exploration (Phase 1) - Run `/brand-explore`, `/logo-explore`, `/component-sheet`
+- Giscus configuration - Enable GitHub Discussions, fill in repo-id and category-id
+- BRAND_IDENTITY.md completion - Fill in remaining hex values after brand exploration

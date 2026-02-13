@@ -1,0 +1,47 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import BlogCard from "../../components/BlogCard.astro";
+import { getCollection } from "astro:content";
+import { categorySlug } from "../../utils/slugify";
+
+export async function getStaticPaths() {
+  const posts = await getCollection("blog", ({ data }) => !data.draft);
+
+  const categories = [...new Set(posts.map((p) => p.data.category).filter(Boolean))] as string[];
+
+  return categories.map((category) => ({
+    params: { category: categorySlug(category) },
+    props: {
+      category,
+      posts: posts
+        .filter((p) => p.data.category === category)
+        .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf()),
+    },
+  }));
+}
+
+const { category, posts } = Astro.props;
+---
+
+<BaseLayout title={`${category} posts`}>
+  <section>
+    <h1 class="text-3xl font-bold text-[#121215] dark:text-[#f0f0f2] mb-2">
+      {category}
+    </h1>
+    <p class="text-[#909098] dark:text-[#606068] mb-8">
+      {posts.length} post{posts.length !== 1 ? "s" : ""} in this category
+    </p>
+
+    <div class="divide-y divide-[#d0d0d8] dark:divide-[#222332]">
+      {posts.map((post) => (
+        <BlogCard
+          title={post.data.title}
+          slug={post.slug}
+          date={post.data.date}
+          category={post.data.category}
+          author={post.data.author}
+        />
+      ))}
+    </div>
+  </section>
+</BaseLayout>

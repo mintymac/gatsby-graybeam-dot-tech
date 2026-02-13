@@ -1,0 +1,61 @@
+---
+import { getCollection, render } from "astro:content";
+import BlogPost from "../layouts/BlogPost.astro";
+import Page from "../layouts/Page.astro";
+
+export async function getStaticPaths() {
+  const blogPosts = await getCollection("blog", ({ data }) => !data.draft);
+  const pages = await getCollection("pages");
+
+  // Sort posts by date for prev/next
+  const sortedPosts = blogPosts.sort(
+    (a, b) => a.data.date.valueOf() - b.data.date.valueOf()
+  );
+
+  const blogPaths = sortedPosts.map((post, i) => ({
+    params: { slug: post.slug },
+    props: {
+      entry: post,
+      type: "blog" as const,
+      prev: i > 0
+        ? { slug: sortedPosts[i - 1].slug, title: sortedPosts[i - 1].data.title }
+        : undefined,
+      next: i < sortedPosts.length - 1
+        ? { slug: sortedPosts[i + 1].slug, title: sortedPosts[i + 1].data.title }
+        : undefined,
+    },
+  }));
+
+  const pagePaths = pages.map((page) => ({
+    params: { slug: page.slug },
+    props: {
+      entry: page,
+      type: "page" as const,
+      prev: undefined,
+      next: undefined,
+    },
+  }));
+
+  return [...blogPaths, ...pagePaths];
+}
+
+const { entry, type, prev, next } = Astro.props;
+const { Content } = await render(entry);
+---
+
+{type === "blog" ? (
+  <BlogPost
+    title={entry.data.title}
+    date={entry.data.date}
+    category={entry.data.category}
+    author={entry.data.author}
+    prev={prev}
+    next={next}
+  >
+    <Content />
+  </BlogPost>
+) : (
+  <Page title={entry.data.title}>
+    <Content />
+  </Page>
+)}

@@ -57,10 +57,7 @@ typings/
 # dotenv environment variables file
 .env
 
-.cache/
 .DS_Store
-public/
-yarn-error.log
 
 # editors
 .idea/
@@ -68,3 +65,10 @@ yarn-error.log
 
 # other
 report/
+
+# Design targets (generated images)
+design_targets/
+
+# Astro
+dist/
+.astro/

@@ -1,0 +1,23 @@
+---
+
+---
+
+<div id="search" class="pagefind-ui" data-pagefind-ui></div>
+
+<style>
+  .pagefind-ui {
+    --pagefind-ui-scale: 0.9;
+  }
+</style>
+
+<link href="/pagefind/pagefind-ui.css" rel="stylesheet" />
+<script src="/pagefind/pagefind-ui.js" is:inline></script>
+<script is:inline>
+  window.addEventListener("DOMContentLoaded", () => {
+    new PagefindUI({
+      element: "#search",
+      showSubResults: true,
+      showImages: false,
+    });
+  });
+</script>

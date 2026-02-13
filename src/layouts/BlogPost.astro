@@ -1,0 +1,63 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+import PostMeta from "../components/PostMeta.astro";
+import PrevNext from "../components/PrevNext.astro";
+import { site } from "../data/site";
+
+interface Props {
+  title: string;
+  date: Date;
+  category?: string;
+  author?: string;
+  prev?: { slug: string; title: string };
+  next?: { slug: string; title: string };
+}
+
+const { title, date, category, author, prev, next } = Astro.props;
+---
+
+<BaseLayout title={title}>
+  <article>
+    <header class="mb-8">
+      <h1 class="text-3xl sm:text-4xl font-bold text-[#121215] dark:text-[#f0f0f2] mb-4">
+        {title}
+      </h1>
+      <PostMeta date={date} category={category} author={author} />
+    </header>
+
+    <div class="prose prose-gray dark:prose-invert max-w-none prose-headings:font-semibold prose-a:text-brand-primary dark:prose-a:text-brand-primary-light prose-code:text-sm prose-pre:bg-[#121215] dark:prose-pre:bg-[#1a1a1f]">
+      <slot />
+    </div>
+
+    <footer class="mt-12 pt-8 border-t border-[#d0d0d8] dark:border-[#222332]">
+      <div class="flex items-center gap-3 text-sm text-[#505058] dark:text-[#a0a0a8]">
+        <span class="font-medium">{site.author.name}</span>
+        <span>&mdash;</span>
+        <span>{site.author.bio}</span>
+      </div>
+    </footer>
+
+    <PrevNext prev={prev} next={next} />
+  </article>
+
+  <!-- Giscus comments -->
+  <div class="mt-12" id="giscus-container">
+    <script
+      is:inline
+      src="https://giscus.app/client.js"
+      data-repo="GrayBeamTechnology/graybeam-dot-tech"
+      data-repo-id=""
+      data-category="Blog Comments"
+      data-category-id=""
+      data-mapping="pathname"
+      data-strict="0"
+      data-reactions-enabled="1"
+      data-emit-metadata="0"
+      data-input-position="top"
+      data-theme="preferred_color_scheme"
+      data-lang="en"
+      crossorigin="anonymous"
+      async
+    ></script>
+  </div>
+</BaseLayout>

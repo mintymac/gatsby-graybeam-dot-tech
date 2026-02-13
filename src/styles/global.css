@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-white text-[#121215] dark:bg-[#0a0a0c] dark:text-[#f0f0f2];
+  }
+}
+
+/* Pagefind UI overrides */
+:root {
+  --pagefind-ui-primary: #7c3cb7;
+  --pagefind-ui-text: #121215;
+  --pagefind-ui-background: #ffffff;
+  --pagefind-ui-border: #d0d0d8;
+  --pagefind-ui-tag: #f5f5f7;
+  --pagefind-ui-border-width: 1px;
+  --pagefind-ui-border-radius: 4px;
+  --pagefind-ui-font: "Open Sans", system-ui, sans-serif;
+}
+
+.dark {
+  --pagefind-ui-primary: #9b5ac7;
+  --pagefind-ui-text: #f0f0f2;
+  --pagefind-ui-background: #0a0a0c;
+  --pagefind-ui-border: #222332;
+  --pagefind-ui-tag: #121215;
+}

@@ -1,0 +1,40 @@
+---
+interface PostLink {
+  slug: string;
+  title: string;
+}
+
+interface Props {
+  prev?: PostLink;
+  next?: PostLink;
+}
+
+const { prev, next } = Astro.props;
+---
+
+{(prev || next) && (
+  <nav class="flex justify-between items-start gap-4 mt-12 pt-8 border-t border-[#d0d0d8] dark:border-[#222332]">
+    {prev ? (
+      <a
+        href={`/${prev.slug}/`}
+        class="group flex-1 text-left"
+      >
+        <span class="text-xs text-[#909098] dark:text-[#606068]">Previous</span>
+        <p class="text-sm font-medium text-[#121215] dark:text-[#f0f0f2] group-hover:text-brand-primary dark:group-hover:text-brand-primary-light transition-colors">
+          {prev.title}
+        </p>
+      </a>
+    ) : <div />}
+    {next ? (
+      <a
+        href={`/${next.slug}/`}
+        class="group flex-1 text-right"
+      >
+        <span class="text-xs text-[#909098] dark:text-[#606068]">Next</span>
+        <p class="text-sm font-medium text-[#121215] dark:text-[#f0f0f2] group-hover:text-brand-primary dark:group-hover:text-brand-primary-light transition-colors">
+          {next.title}
+        </p>
+      </a>
+    ) : <div />}
+  </nav>
+)}

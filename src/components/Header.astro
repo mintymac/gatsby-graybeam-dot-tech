@@ -1,0 +1,41 @@
+---
+import { getCollection } from "astro:content";
+import ThemeToggle from "./ThemeToggle.astro";
+import { site } from "../data/site";
+
+const pages = await getCollection("pages");
+const navPages = pages
+  .filter((p) => p.data.order != null)
+  .sort((a, b) => (a.data.order ?? 0) - (b.data.order ?? 0));
+---
+
+<header
+  class="sticky top-0 z-50 border-b border-[#d0d0d8] dark:border-[#222332] bg-white/80 dark:bg-[#0a0a0c]/80 backdrop-blur-sm"
+>
+  <nav class="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+    <a href="/" class="flex items-center gap-2 group">
+      <span
+        class="text-lg font-bold text-brand-primary group-hover:text-brand-primary-light transition-colors"
+      >
+        {site.shortTitle}
+      </span>
+      <span class="text-sm text-[#909098] dark:text-[#606068] hidden sm:inline">
+        {site.tagline}
+      </span>
+    </a>
+
+    <div class="flex items-center gap-4">
+      {
+        navPages.map((page) => (
+          <a
+            href={`/${page.slug}/`}
+            class="text-sm text-[#505058] dark:text-[#a0a0a8] hover:text-brand-primary dark:hover:text-brand-primary-light transition-colors"
+          >
+            {page.data.menuTitle || page.data.title}
+          </a>
+        ))
+      }
+      <ThemeToggle />
+    </div>
+  </nav>
+</header>
