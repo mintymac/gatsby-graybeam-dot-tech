@@ -14,6 +14,17 @@ const navPages = pages
 >
   <nav class="max-w-3xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
     <a href="/" class="flex items-center gap-2 group">
+      <!-- Compact prism icon -->
+      <svg viewBox="0 0 24 22" class="w-5 h-5 flex-shrink-0" aria-label="Gray Beam prism">
+        <!-- Right arm (back layer at top) -->
+        <polygon points="23,21 12,0.5 12,7.5 18,17" fill="#9b5ac7"/>
+        <!-- Left arm (overlaps right at top vertex) -->
+        <polygon points="12,0.5 1,21 6,17 12,7.5" fill="#5c2a8a"/>
+        <!-- Bottom arm (overlaps left at bottom-left vertex) -->
+        <polygon points="1,21 23,21 18,17 6,17" fill="#7c3cb7"/>
+        <!-- Impossible junction: right arm over bottom at bottom-right -->
+        <polygon points="23,21 20.5,21 18,17" fill="#9b5ac7"/>
+      </svg>
       <span
         class="text-lg font-bold text-brand-primary group-hover:text-brand-primary-light transition-colors"
       >

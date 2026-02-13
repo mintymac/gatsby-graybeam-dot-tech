@@ -8,12 +8,14 @@ interface Props {
   title?: string;
   description?: string;
   ogImage?: string;
+  wide?: boolean;
 }
 
 const {
   title,
   description = site.description,
   ogImage = "/preview.jpg",
+  wide = false,
 } = Astro.props;
 
 const pageTitle = title ? `${title} | ${site.title}` : site.title;
@@ -76,9 +78,15 @@ const ogImageUrl = new URL(ogImage, site.url);
     class="min-h-screen flex flex-col bg-white text-[#121215] dark:bg-[#0a0a0c] dark:text-[#f0f0f2] transition-colors"
   >
     <Header />
-    <main class="flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 py-8">
-      <slot />
-    </main>
+    {wide ? (
+      <main class="flex-1">
+        <slot />
+      </main>
+    ) : (
+      <main class="flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 py-8">
+        <slot />
+      </main>
+    )}
     <Footer />
   </body>
 </html>
