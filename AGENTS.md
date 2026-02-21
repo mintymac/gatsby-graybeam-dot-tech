@@ -1,0 +1,1 @@
+/home/mchughson/.claude/AGENTS.global.md

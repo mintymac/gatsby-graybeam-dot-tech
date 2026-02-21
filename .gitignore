@@ -72,3 +72,6 @@ design_targets/
 # Astro
 dist/
 .astro/
+
+# Local Netlify folder
+.netlify
