@@ -39,25 +39,4 @@ const { title, date, category, author, prev, next } = Astro.props;
 
     <PrevNext prev={prev} next={next} />
   </article>
-
-  <!-- Giscus comments -->
-  <div class="mt-12" id="giscus-container">
-    <script
-      is:inline
-      src="https://giscus.app/client.js"
-      data-repo="GrayBeamTechnology/graybeam-dot-tech"
-      data-repo-id=""
-      data-category="Blog Comments"
-      data-category-id=""
-      data-mapping="pathname"
-      data-strict="0"
-      data-reactions-enabled="1"
-      data-emit-metadata="0"
-      data-input-position="top"
-      data-theme="preferred_color_scheme"
-      data-lang="en"
-      crossorigin="anonymous"
-      async
-    ></script>
-  </div>
 </BaseLayout>
