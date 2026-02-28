@@ -237,7 +237,7 @@ The goal: any Elixir application can add one dependency and get blockchain-ancho
 
 ## The PDF Analogy
 
-Two days ago, I wrote about [stopping PDF generation](/blog/stop-generating-pdfs) because the format was wrong for the job. Blockchain anchoring is the inverse — adding a technology because it's genuinely the right tool for the problem.
+Two days ago, I wrote about [stopping PDF generation](/stop-generating-pdfs/) because the format was wrong for the job. Blockchain anchoring is the inverse — adding a technology because it's genuinely the right tool for the problem.
 
 PDFs pretend to be trustworthy by looking official. Blockchain anchors are actually trustworthy because the math checks out. PDFs require you to trust the system that generated them. Blockchain anchors require you to trust SHA-256 and Ed25519 — which, respectively, secure every HTTPS connection on the internet and every SSH key on your laptop.
 

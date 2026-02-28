@@ -11,7 +11,7 @@ That contradicts every elementary math curriculum you've ever seen. Subtraction 
 
 ## The Experiment
 
-We ran a 60-second demo of our [Curriculum Crawler](https://github.com/graybeamtech/tallmadge), a swarm intelligence system built on Elixir/OTP that discovers optimal learning paths through prerequisite graphs. The setup:
+We ran a 60-second demo of our [Curriculum Crawler](https://github.com/orgs/GrayBeamTechnology), a swarm intelligence system built on Elixir/OTP that discovers optimal learning paths through prerequisite graphs. The setup:
 
 - **12-concept math DAG** (from `counting` to `linear_equations`)
 - **10 scout agents** — pure heuristics, zero LLM calls
@@ -113,7 +113,7 @@ The 3 tutor agents ran **Qwen3-32B** through Groq's inference API. Not GPT-4. No
 
 Total LLM cost for the 60-second run: **a few cents.**
 
-This is the core thesis of our work on [Stigmex](https://github.com/graybeamtech/tallmadge), the swarm intelligence toolkit we're building on Elixir/OTP. The intelligence isn't in the individual model — it's in the coordination protocol. A swarm of cheap agents with good coordination beats an expensive model working alone.
+This is the core thesis of our work on [Stigmex](https://github.com/orgs/GrayBeamTechnology), the swarm intelligence toolkit we're building on Elixir/OTP. The intelligence isn't in the individual model — it's in the coordination protocol. A swarm of cheap agents with good coordination beats an expensive model working alone.
 
 This connects to Knowledge Space Theory ([Doignon & Falmagne, 1999](https://doi.org/10.1007/978-3-642-58625-5)), which models learning domains as prerequisite structures (partial orders on knowledge states). The theory tells us that efficient learning paths exist, but finding them requires understanding the structure. Our swarm discovers that structure empirically, through exploration and pheromone deposition, at a fraction of the cost of having a frontier model reason about it.
 
@@ -141,11 +141,11 @@ A swarm of 13 agents — 10 of them running no AI at all — discovered that mul
 
 Stigmergy lets simple agents discover complex optimizations. The mechanism is 400 million years old. The implementation costs a few cents. The insight is real.
 
-We're building [Stigmex](https://github.com/graybeamtech/tallmadge) as an open-source toolkit for anyone who wants to run swarm intelligence on problems that matter — without needing a GPU cluster or an API budget. Curriculum sequencing is just the first domain. What else might swarms discover?
+We're building [Stigmex](https://github.com/orgs/GrayBeamTechnology) as an open-source toolkit for anyone who wants to run swarm intelligence on problems that matter — without needing a GPU cluster or an API budget. Curriculum sequencing is just the first domain. What else might swarms discover?
 
 ---
 
-*This research was conducted as part of the [Tallmadge project](https://github.com/graybeamtech/tallmadge), a swarm intelligence platform built on Elixir/OTP. Scout agents use zero LLM calls; tutor agents ran Qwen3-32B via Groq.*
+*This research was conducted as part of the [Tallmadge project](https://github.com/orgs/GrayBeamTechnology), a swarm intelligence platform built on Elixir/OTP. Scout agents use zero LLM calls; tutor agents ran Qwen3-32B via Groq.*
 
 **Technology Stack**: Elixir/OTP, Phoenix LiveView, Groq (Qwen3-32B), Stigmex Toolkit
 

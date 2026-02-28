@@ -175,7 +175,7 @@ We're committed to open source. Our planned strategy:
 - Enterprise support contracts
 - Consulting services
 
-Repository coming soon at: https://github.com/graybeam/constraint-driven-dev
+Repository coming soon on [GitHub](https://github.com/orgs/GrayBeamTechnology).
 
 ## Collaborative Innovation
 
@@ -200,7 +200,7 @@ We're establishing prior art with this public disclosure (October 14, 2025) and 
 **Contact us**:
 Email: origin@graybeam.tech
 Website: https://graybeam.tech
-GitHub: https://github.com/graybeam
+GitHub: https://github.com/orgs/GrayBeamTechnology
 
 ## Conclusion
 

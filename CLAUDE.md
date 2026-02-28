@@ -4,98 +4,92 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an Astro blog site for Gray Beam Technology. It uses Astro 5, Tailwind CSS with @tailwindcss/typography, and markdown content collections.
+Astro 5 static blog for Gray Beam Technology. Tailwind CSS 3 + @tailwindcss/typography, markdown content collections, deployed to Netlify.
 
 ## Development Commands
 
-### Essential Commands
-- `npm run dev` - Start development server (http://localhost:4321)
-- `npm run build` - Build production site to /dist directory
-- `npm run preview` - Preview built site locally
+- `npm run dev` — dev server at http://localhost:4321
+- `npm run build` — build to `/dist`
+- `npm run preview` — preview built site
+- `npx netlify deploy --dir=dist --no-build --prod` — deploy to Netlify (requires `gh auth switch --user mintymac` for GrayBeamTechnology org)
 
 ## Architecture
 
-### Content Management
-Content is organized in Astro content collections under `/src/content`:
-- **Blog**: `/src/content/blog/` - Blog posts as `.md` files with date in frontmatter
-- **Pages**: `/src/content/pages/` - Static pages (about, privacy) with order field
+### Flat URL Namespace
 
-### Content Collection Schemas (`src/content/config.ts`)
-- **Blog**: title (string), category (string?), cover (string?), author (string?), date (date), draft (boolean)
-- **Pages**: title (string), menuTitle (string?), order (number?)
+Blog posts and static pages share the same `/{slug}/` URL space. The single `src/pages/[slug].astro` route collects both collections via `getStaticPaths()`, tags each with `type: "blog"` or `type: "page"`, and conditionally renders the appropriate layout. This means **slug collisions between posts and pages will break the build**.
 
-### URL Routing
-Posts and pages both live at root-level URLs (`/nature/`, `/about/`). The `[slug].astro` dynamic route handles both blog posts and pages via `getStaticPaths`.
+Category listings live at `/category/{slugified-name}/` via `src/pages/category/[category].astro`.
 
-### Styling System
-- **Tailwind CSS** with class-based dark mode
-- **@tailwindcss/typography** for prose styling of markdown content
-- Brand colors defined in `tailwind.config.mjs` under `colors.brand`
-- Theme tokens from `BRAND_IDENTITY.md` (pending brand exploration)
+### Layout System
 
-### Component Structure
-All components in `/src/components/` are Astro components:
-- `Header.astro` - Nav with page links, dark mode toggle
-- `Footer.astro` - Copyright, contact, social links
-- `BlogCard.astro` - Post listing item
-- `CategoryBadge.astro` - Category pill with link
-- `PostMeta.astro` - Date, author, category display
-- `PrevNext.astro` - Post navigation
-- `ThemeToggle.astro` - Dark/light mode toggle
-- `Search.astro` - Pagefind search UI
+`BaseLayout.astro` has a `wide` prop that controls content width:
+- **Default (no `wide`):** Content is constrained to `max-w-3xl mx-auto` with padding — used by blog posts, pages, category listings, 404
+- **`wide` mode:** Content fills the full viewport width with no constraints — used only by the homepage for full-bleed sections
 
-### Layouts
-- `BaseLayout.astro` - HTML shell, head, fonts, OG tags, header/footer
-- `BlogPost.astro` - Post layout with prose styling, author bio, Giscus comments, prev/next
-- `Page.astro` - Static page layout
+`BlogPost.astro` wraps BaseLayout and adds: prose styling, author bio, PrevNext navigation, and the Giscus comment widget.
+
+### Homepage (`index.astro`)
+
+The most complex page (~280 lines). Key patterns:
+
+**Blog image mapping:** A `blogImages` Record maps post slugs to `/images/blog-*.png` paths. When adding a new blog post, you must also add its hero image entry here or the post will render without a thumbnail on the homepage.
+
+**Scroll reveals:** Elements with `data-reveal` attribute start hidden (`opacity: 0; translateY(20px)`) and animate in when scrolled into view. The `IntersectionObserver` script is inline at the bottom of the page; the CSS transitions are in `src/styles/global.css`.
+
+**Hero prism:** The prism image uses `mask-image: radial-gradient(ellipse at center, black 35%, transparent 65%)` to soft-fade edges into the dark background. It has a floating animation (`prism-float` keyframes, 6s) and a purple drop shadow.
+
+### Content Collections
+
+Schemas in `src/content/config.ts`:
+- **Blog:** title, category?, cover?, author?, date (coerced), draft (default false)
+- **Pages:** title, menuTitle?, order?
+
+Pages with a non-null `order` appear in header nav, sorted by that value.
+
+### Color System
+
+Only 3 brand purples are in `tailwind.config.mjs` (`brand.primary`, `brand.primary-light`, `brand.primary-dark`). All other brand colors (dark/light backgrounds, surfaces, borders, text hierarchy) are used as **hardcoded hex values** via Tailwind arbitrary values (e.g., `bg-[#0a0a0c]`, `text-[#b0b0c0]`). The full token reference is in `BRAND_IDENTITY.md`.
+
+### Dark Mode
+
+Class-based (`dark` class on `<html>`). A flash-prevention `is:inline` script in BaseLayout's `<head>` checks localStorage + `prefers-color-scheme` before first paint. `ThemeToggle.astro` handles runtime toggling and persistence.
 
 ### Site Data
-- `src/data/site.ts` - Site metadata, author info, social links
 
-### Features
-- **Pagefind** - Client-side search, indexed at build time
-- **Giscus** - GitHub Discussions-based comments (needs repo-id/category-id configuration)
-- **RSS** - At `/rss.xml` via `@astrojs/rss`
-- **Sitemap** - Auto-generated by `@astrojs/sitemap`
-- **Dark mode** - Class-based with localStorage persistence
-- **Syntax highlighting** - Shiki with one-dark-pro theme
-- **Emoji** - Via remark-gemoji (`:100:` renders as emoji)
+`src/data/site.ts` — site metadata, author info (McHughson Chambers), social links, footer config.
 
-### Build & Deploy
-- **Netlify** deployment configured in `netlify.toml`
-- Build command: `npm run build`, publish dir: `dist`
-- Static output mode
+## Adding Content
 
-## Environment Variables
+### New Blog Post
 
-- `GOOGLE_API_KEY` or `VERTEX_API_KEY` - For brand exploration image generation (Phase 1)
+1. Create `src/content/blog/post-slug.md` with frontmatter:
+   ```markdown
+   ---
+   title: "Post Title"
+   category: "Engineering"
+   author: "McHughson Chambers"
+   date: 2026-01-01
+   ---
+   ```
+2. Add a hero image to `public/images/blog-post-slug.png`
+3. Add the slug → image mapping in `src/pages/index.astro` in the `blogImages` record
+4. Categories should be capitalized: "Engineering", "Innovation", "Product"
 
-## Key Patterns
+### New Page
 
-### Adding New Blog Posts
-Create `.md` file in `/src/content/blog/` with frontmatter:
-```markdown
----
-title: "Post Title"
-category: "Category Name"
-author: "Author Name"
-date: 2026-01-01
----
-```
-Posts with images use directory format: `blog/post-name/index.md` with images alongside.
+Create `src/content/pages/page-name.md`. Set `order` to include it in nav.
 
-### Adding New Pages
-Create `.md` file in `/src/content/pages/` with frontmatter:
-```markdown
----
-title: Page Title
-menuTitle: Nav Label
-order: 3
----
-```
-Pages with `order` field appear in the header navigation.
+## Integrations
+
+- **Pagefind** — client-side search, index built at `npm run build` time, UI loaded from `/pagefind/`
+- **Giscus** — comment widget in `BlogPost.astro`, configured for `GrayBeamTechnology/graybeam-dot-tech` but `data-repo-id` and `data-category-id` are still empty (not functional)
+- **RSS** — `src/pages/rss.xml.ts`
+- **Sitemap** — auto-generated by `@astrojs/sitemap`
+- **remark-gemoji** — `:emoji_name:` shortcodes in markdown
 
 ## Pending Work
-- Brand exploration (Phase 1) - Run `/brand-explore`, `/logo-explore`, `/component-sheet`
-- Giscus configuration - Enable GitHub Discussions, fill in repo-id and category-id
-- BRAND_IDENTITY.md completion - Fill in remaining hex values after brand exploration
+
+- Giscus configuration — need to enable GitHub Discussions, fill in repo-id and category-id in `BlogPost.astro`
+- Production SVG logo (current header logo is inline SVG approximation)
+- README.md is outdated (still references Gatsby)
