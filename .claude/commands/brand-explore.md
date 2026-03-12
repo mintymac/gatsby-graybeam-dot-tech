@@ -4,7 +4,7 @@ description: Generate brand exploration boards from BRAND_IDENTITY.md
 
 ## CRITICAL: Model Selection
 **NEVER** use `gemini-2.0-flash-exp-image-generation` — it produces garbage text that destroys user trust.
-The ONLY model for image generation is `gemini-3-pro-image-preview`.
+The ONLY model for image generation is `gemini-3.1-flash-image-preview`.
 Do NOT substitute, even if that model returns a 404. Report the error instead.
 
 # /brand-explore — Brand Exploration Board Generator
@@ -167,7 +167,7 @@ n = $N
 output_dir = "$DIR"
 prefix = "brand_board"
 
-url = f"{api_base}/gemini-3-pro-image-preview:generateContent?key={api_key}"
+url = f"{api_base}/gemini-3.1-flash-image-preview:generateContent?key={api_key}"
 
 payload = json.dumps({
     "contents": [{"parts": [{"text": prompt}]}],
@@ -342,7 +342,7 @@ with open(ref_path, "rb") as f:
 # Compute ancestry-based output names
 ref_basename = os.path.splitext(os.path.basename(ref_path))[0]
 
-url = f"{api_base}/gemini-3-pro-image-preview:generateContent?key={api_key}"
+url = f"{api_base}/gemini-3.1-flash-image-preview:generateContent?key={api_key}"
 
 payload = json.dumps({
     "contents": [{"parts": [
