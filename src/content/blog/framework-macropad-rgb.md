@@ -166,6 +166,10 @@ It gets its own color — teal in day mode, deep plum at night — so it stands 
 
 If you're running custom QMK firmware on Framework hardware, **match your firmware version to the latest fwupd release**. Otherwise the update system will keep trying to "help" by overwriting your build. Rebasing is cheap when the custom code is isolated — the entire process took about ten minutes.
 
+## Credits
+
+None of this would exist without [Adam Pippin's](https://gitlab.com/nucleardog) `rgb_remote` — the USB protocol that lets the host talk to individual LEDs. His [QMK fork](https://gitlab.com/nucleardog/qmk_firmware_fw16) added `rgb_remote.c/h` (released under CC0) and the `RgbRemote.py` HID interface. Everything in this post builds on his work.
+
 ## Shout out to Framework
 
 This whole project is possible because Framework designed the macropad with an open firmware (QMK), a programmable LED controller, and a raw HID interface for host control. Most hardware vendors would have locked this behind proprietary software. Framework shipped it as an open platform.
