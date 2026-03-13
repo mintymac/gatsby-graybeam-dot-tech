@@ -1,0 +1,9 @@
+<!DOCTYPE html><html><head><title>Hero Image Gallery</title>
+<style>body{background:#111;color:#fbbf24;font-family:monospace;padding:20px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:16px;margin-top:16px}.card{background:#1a1a2e;border:2px solid #333;border-radius:8px;overflow:hidden;cursor:pointer;transition:all .15s}.card:hover{border-color:#555}.card.selected{border-color:#fbbf24;box-shadow:0 0 20px rgba(251,191,36,.15)}.card img{width:100%;display:block}.card .label{padding:8px 12px;font-size:13px}</style></head><body>
+<h1 style="font-size:18px;letter-spacing:4px;text-transform:uppercase">Hero Image Selection</h1>
+<div class="grid"><div class="card" data-name="blog-20000x-faster-stats_v1.png" onclick="selectCard(this)"><img src="blog-20000x-faster-stats_v1.png"><div class="label">blog-20000x-faster-stats_v1.png</div></div>
+<div class="card" data-name="blog-20000x-faster-stats_v2.png" onclick="selectCard(this)"><img src="blog-20000x-faster-stats_v2.png"><div class="label">blog-20000x-faster-stats_v2.png</div></div>
+<div class="card" data-name="blog-20000x-faster-stats_v3.png" onclick="selectCard(this)"><img src="blog-20000x-faster-stats_v3.png"><div class="label">blog-20000x-faster-stats_v3.png</div></div>
+</div>
+<script>function selectCard(c){document.querySelectorAll('.card').forEach(x=>x.classList.remove('selected'));c.classList.add('selected')}</script>
+</body></html>
