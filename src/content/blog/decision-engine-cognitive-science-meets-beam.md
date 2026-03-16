@@ -1,181 +1,140 @@
 ---
-title: "Building a Decision Engine: When Cognitive Science Meets the BEAM"
-category: "Engineering"
+title: "Why Decision Tools Fail: What Cognitive Science Taught Us About Building a Real One"
+category: "Product"
 author: McHughson Chambers
 date: 2026-03-16
 ---
 
-Most decision tools get the problem wrong. They show you a chart, a matrix, a comparison table — and leave you staring at it thinking "okay, but what do I actually *do*?"
+We set out to build a decision engine and discovered that almost every decision tool in existence is solving the wrong problem.
 
-We built a decision engine that doesn't just classify problems. It thinks with you. It challenges your assumptions, simulates counterfactual scenarios through causal graphs, and tells you exactly how your decision could fail. And it runs on the BEAM, as a process-per-session architecture that any app in our ecosystem can call without leaving the VM.
+The charts are beautiful. The comparison matrices are thorough. The weighted scoring models are mathematically sound. And people still stare at the output thinking "okay, but what do I actually *do*?"
 
-Here's what we learned building it, and why the cognitive science mattered more than the code.
+This is the story of what we found when we stopped engineering and started reading — and how it completely changed what we built.
 
-## The Research That Changed Everything
+## The Uncomfortable Discovery
 
-Before writing a single line of Elixir, we ran four parallel research agents across the academic literature. Not a literature review for fun — we needed to know how people actually solve problems, because the answer determines the architecture.
+We did something unusual for a software team: before writing any code, we spent a full day in the research. Not skimming blog posts — actually reading Gary Klein, Daniel Kahneman, Dave Snowden, Chip Heath. We wanted to understand how humans make decisions in the real world, not how textbooks say they should.
 
-**The headline finding:** People don't struggle with choosing between options. They struggle with understanding what they're dealing with.
+The findings were uncomfortable.
 
-Gary Klein's Recognition-Primed Decision model studied fireground commanders, ICU nurses, and military officers. Of 134 decision points observed, 87% used pattern recognition — not comparison. Experts don't weigh options side by side. They recognize the situation, mentally simulate one action, and go with it unless they find a flaw.
+**87% of expert decisions don't involve comparing options at all.** Klein studied fireground commanders, ICU nurses, and military officers making high-stakes decisions under time pressure. They didn't weigh pros and cons. They recognized the situation as familiar, mentally simulated one course of action, and went with it — unless the simulation revealed a problem.
 
-This means the most valuable thing a decision tool can do isn't build a comparison matrix. It's help the user *frame the problem correctly*.
+This is called the Recognition-Primed Decision model, and it demolishes the assumption behind every comparison matrix ever built: that people decide by evaluating options side by side.
 
-Mica Endsley's situation awareness research confirmed it: most decision failures happen at the understanding stage, not the choosing stage. Chip and Dan Heath's research quantified it: decisions framed as "should I do X?" fail 52% of the time. Decisions comparing at least two frames fail only 32%.
+**Most decision failures happen before the choosing begins.** Endsley's situation awareness research showed that when decisions go wrong, it's usually because the person misunderstood the situation — not because they picked the wrong option from a correctly understood set. They solved the wrong problem competently.
 
-**The five stages of how people actually decide (not the textbook version):**
+**The number-one predictor of decision quality isn't analytical rigor.** It's whether the person considered more than one way to frame the problem. Heath's research across hundreds of organizational decisions: framing a decision as "should I do X?" fails 52% of the time. Considering at least two frames drops the failure rate to 32%.
 
-| Stage | What happens | Where tools usually help |
-|-------|-------------|------------------------|
-| "Something's off" | Problem detection | Nowhere |
-| "What's really going on?" | Sensemaking — **most cognitive effort here** | Nowhere |
-| "If I do X, what happens?" | Mental simulation (~3 steps max unaided) | Some tools |
-| "I'm going with this" | Commitment | What most tools focus on |
-| "That didn't go as planned" | Adaptation | Nowhere |
+That twenty-point gap isn't about better analysis. It's about better *understanding*.
 
-Most decision tools live in Stage 4 — the choosing. But that's where the least cognitive effort goes. The engine we built covers Stages 2 and 3, where people actually need help.
+## Where the Thinking Actually Happens
 
-## Architecture: Process-Per-Session on the BEAM
+The textbooks say: define the problem, generate options, evaluate, choose. That's not what people do. Synthesizing across NDM research, macrocognition, and field studies, we found five actual stages:
 
-The decision engine runs as a GenServer per session. Each decision gets its own process with its own state, its own causal graph, and its own conversation history.
+**Stage 1: "Something's off."** Problem detection. Often subconscious — a nurse walks into a patient's room and feels something is wrong before she can say what.
 
-```elixir
-# Engine.Server — one per decision session
-defmodule DecisionForge.Engine.Server do
-  use GenServer
+**Stage 2: "What's really going on?"** Sensemaking. Constructing a coherent story about the situation. **This is where the overwhelming majority of cognitive effort goes.** Not choosing — understanding.
 
-  def init({session_id, opts}) do
-    Process.flag(:trap_exit, true)
+**Stage 3: "If I do X, what happens?"** Mental simulation. People can only run these forward about three causal steps before the model degrades. They test one option at a time, not all of them in parallel.
 
-    {:ok,
-     %{
-       session_id: session_id,
-       session: %Session{},
-       causal_graph: nil,    # Built lazily from morph payload
-       causal_model: nil     # Equation registry name
-     }, @idle_timeout}
-  end
-end
-```
+**Stage 4: "I'm going with this."** Commitment. It's not a dramatic choice — it's a confidence threshold. If the simulation didn't reveal a showstopper, you're in.
 
-The session struct uses a pure `reduce/2` function — all state transitions go through it, and it returns `{new_session, [effects]}` without executing them. The GenServer handles the effects (spawning classification streams, broadcasting via PubSub, persisting to SQLite).
+**Stage 5: "That didn't go exactly as planned."** Adaptation. Continuous monitoring and adjustment. Decisions don't end when you choose.
 
-```
-Engine.Supervisor (DynamicSupervisor)
-  ├── Engine.Server "session_abc" ← owns session + causal graph
-  ├── Engine.Server "session_def"
-  └── Engine.Server "session_ghi"
-```
+Every decision tool we've ever used lives in Stage 4. But Stages 2 and 3 are where people are actually stuck. And almost nothing helps them there.
 
-Three access paths to the same engine:
+## The Failure Mode Nobody Talks About
 
-| Path | For | Overhead |
-|------|-----|----------|
-| LiveView | Web users | WebSocket |
-| REST API | Hub, Bouncer, external apps | HTTP + Bearer token |
-| GraybeamCore.Tool | Any BEAM app in ecosystem | Zero — direct GenServer call |
+Klein identifies premature closure as the single most common decision failure across every domain studied. In diagnostic medicine, it was present in 74% of diagnostic errors.
 
-The BEAM-native path is the interesting one. We registered the engine as tools with `GraybeamCore.Tool.Registry`, which means any Elixir app that depends on `graybeam_core` can call `classify_decision`, `get_decision`, or `update_decision` without HTTP serialization. Hub can ask the engine to analyze Bouncer's growth strategy. GrayPress can ask it to evaluate a content publishing decision. All on the same VM.
+Here's how it works: you encounter a situation, your brain pattern-matches to something familiar, a frame snaps into place, and you shift from "figuring out" mode to "executing" mode. It feels good — the ambiguity resolves, you have a plan. But the frame might be wrong.
 
-## The Sensemaking Layer
+The insidious part: once a frame locks in, new information gets bent to fit it rather than used to question it. You don't notice you're doing this. You're not being lazy or careless — it's how pattern recognition works.
 
-This is the part the research demanded. When a user submits a query, the classifier identifies the cognitive domain (trade-off analysis, crisis triage, temporal planning, or stakeholder dynamics) and produces a structured payload. But that payload is just the *frame*.
+Gathering more data doesn't fix this. If your frame is wrong, you just accumulate more evidence that confirms a bad interpretation. You need something that challenges the frame itself.
 
-The sensemaking layer examines the frame itself:
+## What a Decision Tool Should Actually Do
 
-**Assumptions** — what the user is implicitly assuming, and what happens if they're wrong:
+The research pointed us toward a very different kind of tool:
 
-```json
-{
-  "assumption": "A full-time DevOps engineer would primarily work on infrastructure",
-  "risk": "At a 3-person startup, any hire wears multiple hats. You might actually be
-           comparing 'hire a backend engineer who can also handle DevOps' vs 'managed
-           platform' — making the cost comparison misleading.",
-  "test": "List actual weekly tasks for your team over the past month. How many hours
-           went to infrastructure vs product?"
-}
-```
+**Help people frame before they choose.** The most valuable intervention isn't better analysis of options — it's ensuring the person understands what kind of problem they're facing. Is this a crisis that needs immediate action? A trade-off that needs careful weighing? A complex situation that requires experimentation? A social dynamic with competing stakeholders?
 
-**Reframes** — alternative ways to see the problem:
+The answer changes everything about how you approach it. And most people never explicitly ask the question.
 
-> "Frame this as a 'time-to-learning' rather than 'time-to-production' decision. Your biggest risk isn't infrastructure cost — it's building the wrong thing slowly. Render lets you ship experiments in days. A DevOps hire might give you more control, but if that control slows your learning loop from 2 weeks to 6 weeks, you've optimized the wrong variable."
+**Surface hidden assumptions.** Every decision rests on assumptions that feel so obvious they go unstated. "Of course demand will stay constant." "Obviously our team can handle the operational complexity." These invisible assumptions are where decisions silently go wrong.
 
-**Pre-mortem** — Klein's technique, which research shows increases risk identification by 30%. We tell the LLM: "It's 6 months later and this decision has failed spectacularly. Write the post-mortem."
+We found that asking someone "what if price were different?" produces shallow adjustments. But asking "what are you assuming about demand, and what happens if you're wrong?" produces genuine reconsideration.
 
-The result includes a failure narrative, root causes, early warning signals, and *tripwires* — specific conditions that should trigger reconsideration:
+**Extend mental simulation beyond three steps.** People can mentally walk through about three causal steps — "if I do A, then B happens, then C follows." After that, the model falls apart. A decision tool should be able to say: "you're thinking three steps ahead, but here's what happens at step five."
 
-```json
-{
-  "condition": "If non-DevOps team members can't independently deploy a code change
-                within 2 weeks of DevOps hire start date",
-  "action": "Mandate that all infrastructure must be reproducible via documented
-             runbooks that any developer can execute"
-}
-```
+This isn't AI making the decision. It's AI extending the human's own reasoning further than they can go unaided.
 
-This isn't generic advice. Every output references the actual data in the decision payload — the specific criteria weights, the options being compared, the scores. The LLM acts as a thinking partner, not an oracle.
+**Run the pre-mortem.** Klein developed a technique where you imagine the decision has already failed spectacularly, then explain why. Research shows this increases risk identification by 30% compared to asking "what might go wrong?"
 
-## Counterfactual Simulation via Pearl's SCM
+The mechanism is fascinating: people who are told "this plan succeeded, explain why" produce bland confirmations. People told "this plan failed, explain why" produce specific, actionable risks they were previously suppressing to maintain group optimism.
 
-Here's where it gets technical. When a user asks "what if I changed this assumption?", we don't just re-run the LLM. We have a real causal inference engine.
+## The Anti-Patterns We're Trying to Avoid
 
-We extracted our Pearl Structural Causal Model implementation from an earlier project and rebuilt it on a new foundation. The storage layer uses `GraybeamGraph` — ETS-backed public tables with concurrent reads, no GenServer bottleneck for traversals. On top of that, `GraybeamCausal` implements:
+The research on AI-assisted decision-making had warnings too.
 
-- **Equation behaviour** — `V := f(PA, U)`, pure deterministic functions
-- **EquationRegistry** — ETS-backed mapping of graph nodes to equation modules
-- **InterventionEngine** — Pearl's do-operator via graphical surgery (creates ephemeral twin networks)
-- **CounterfactualQuery** — the full 3-step process: abduction, action, prediction
+**Automation bias is real and unique to AI.** A 2024 meta-analysis from MIT found that human-AI teams on average failed to outperform AI-only systems — because humans introduced errors, bias, and delays when overriding correct AI answers. People over-rely on AI in ways they don't over-rely on human advisors.
 
-When a morph payload arrives, `CausalModeler` converts it into a causal graph. For a COMPARATOR morph, criteria become input nodes, options become computed nodes with weighted score equations, and the verdict becomes the root. For a SIMULATOR morph, parameters become input nodes with model-typed curves (linear, diminishing returns, threshold, saturation).
+**Alert fatigue destroys everything.** Clinical decision support systems that generated too many alerts saw 96% override rates. When everything is highlighted as important, nothing is.
 
-```elixir
-# Pearl's do-operator: "What if price were 15 instead of 10?"
-{:ok, twin} = InterventionEngine.intervene(graph,
-  interventions: %{"price" => 15.0}
-)
+**False precision causes anxiety, not clarity.** "Decision Clarity: 67.3%" sounds scientific but means nothing. Our persona testing caught this early — a non-technical user said the percentage "makes me nervous without telling me what to do about it."
 
-# Propagate through twin network in topological order
-{:ok, sorted} = CausalGraph.topological_sort(twin)
-# For each node: compute from equation or use observed value
-# Intervened nodes use fixed value; others recompute from parents
-```
+**The most dangerous anti-pattern: making users feel informed without actually helping them think.** A polished dashboard with beautiful charts can feel productive while leaving the user no better equipped to decide. The feeling of understanding is not understanding.
 
-The `CausalGraph` extension we built for `GraybeamGraph` adds acyclicity enforcement (DFS reachability check on every edge insertion), Kahn's algorithm for topological sort, and ancestor/descendant traversal — all as pure functions over the public ETS tables.
+## What We Actually Built
 
-The equations themselves are generated dynamically at runtime via `Module.create/3`. Each morph payload produces unique equation modules that capture the specific weights, scores, and relationships from the LLM's classification. No hardcoded domain logic — the LLM decides the structure, the SCM engine decides the math.
+We built an engine that takes a decision query and does four things:
 
-## What We Got Wrong (and Fixed)
+**First, it identifies what kind of problem you're dealing with.** Not as a label — as a cognitive scaffold. A crisis needs a different thinking structure than a trade-off. A planning problem over time needs different tools than a stakeholder negotiation. The classification determines the entire decision framework that follows.
 
-**Model ID routing.** `GraybeamCore.Agent` uses a fallback chain across providers (Anthropic, OpenRouter, Gemini). We configured the default model as `"anthropic/claude-sonnet-4"` — an OpenRouter-style model ID — but Anthropic was first in the chain. Anthropic's API rejected it: "model: Input should be a valid string." The fix: resolve the model from the same config as the classifier, per provider. Lesson: when you have a multi-provider abstraction, model IDs are not portable.
+**Second, it challenges your framing.** The sensemaking layer doesn't just present analysis — it examines the analysis itself. What are you assuming? What would a completely different interpretation look like? What's missing that you haven't considered?
 
-**GenServer call timeouts.** The sensemaking LLM calls can take 30-60 seconds for complex prompts with full decision context. The default GenServer call timeout is 5 seconds; we set it to 30, which still wasn't enough. Bumped to 120 seconds. For production, these should be async with SSE streaming — but for the API, synchronous-with-long-timeout works.
+When we tested this with a real query — "should we hire a DevOps engineer or use a managed platform for our 3-person startup?" — the engine came back with: "At 3 people, this is really a survival/focus problem disguised as an infrastructure decision. The meta-question — should we be making this decision at all right now? — might matter more than the answer itself."
 
-**Enum.with_index for side effects.** Credo flagged unused return values from `Enum.with_index/2` where we were using it to iterate with an index but didn't need the result. The fix: pipe through `Enum.with_index() |> Enum.each()`. Small, but Credo strict catches it.
+That reframe is worth more than any weighted matrix.
 
-## The Cognitive Science Design Principles
+**Third, it simulates consequences.** Not by asking the LLM "what happens if..." — that's just generating plausible text. We built an actual causal inference engine based on Judea Pearl's Structural Causal Model framework. The LLM's analysis gets converted into a causal graph where nodes are factors and edges are causal relationships. When you change an assumption, the change propagates through the graph mathematically.
 
-Six principles emerged from the research that directly shaped the architecture:
+This means "what if cost doubles?" isn't an opinion — it's a computation that respects the causal structure the LLM identified.
 
-1. **Structure is the product.** The morph classification doesn't just display data — it restructures how the user thinks. Changing the representation changes the cognitive task (Larkin & Simon, 1987).
+**Fourth, it tells you how this could fail.** The pre-mortem doesn't just list risks. It produces a vivid failure narrative: "It's 6 months later. Here's exactly what went wrong." Root causes. Early warning signs you should watch for. And tripwires — specific conditions that should make you reconsider.
 
-2. **Interaction is cognition.** When users adjust weight sliders, they're not configuring a tool — they're thinking. The generation effect (Slamecka & Graf, 1978): people understand better when they generate rather than receive.
+One of the tripwires from our test: "If non-DevOps team members can't independently deploy a code change within 2 weeks of the DevOps hire start date, mandate that all infrastructure must be reproducible via documented runbooks." That's not generic advice. That's specific, testable, and actionable.
 
-3. **Force articulation before showing results.** The rubber duck effect is real. Forming the query itself improves the user's understanding. Cognitive forcing functions (Bucinca et al., 2021) reduce overreliance on AI recommendations.
+## Why It Matters Beyond the Tool
 
-4. **Reframe, don't just recommend.** "This is actually a trade-off problem" is more valuable than "choose option B." Counterfactual explanations outperform feature importance for decision quality (Wachter et al., 2017).
+We built this for ourselves first — we needed a way to make strategic decisions about our own products using live operational data. But the deeper discovery is that the methodology matters more than the tool.
 
-5. **Guard against premature closure.** The #1 failure mode across all domains. The sensemaking layer explicitly challenges the first frame.
+**Every business makes decisions, and almost none of them have a process for it.** They have processes for writing code, deploying software, hiring people, and tracking finances. But "how do we decide things?" is left to whoever is loudest in the meeting.
 
-6. **Match the intervention to the domain.** Snowden's Cynefin framework maps directly to our morph system: chaotic situations need triage (act first), complicated ones need analysis (COMPARATOR), complex ones need probes (SIMULATOR/ROUND_TABLE).
+The cognitive science gives us a framework that works regardless of the tool:
+
+1. **Name the problem type before analyzing it.** "Is this a crisis, a trade-off, a planning problem, or a people problem?" Just asking the question out loud changes the conversation.
+
+2. **Surface assumptions explicitly.** "What are we assuming is true that we haven't verified?" Write them down. Most decisions fail on unstated assumptions.
+
+3. **Try a different frame.** "What if this isn't actually a cost problem but a timing problem?" One reframe often reveals what the whole analysis missed.
+
+4. **Run the pre-mortem.** "It's a year from now and this decision was a disaster. What happened?" You'll be surprised what your team says when given permission to imagine failure.
+
+5. **Set tripwires.** "If X happens, we'll reconsider." Decisions shouldn't be permanent commitments — they should be hypotheses with exit criteria.
+
+These five steps don't require an AI, an engine, or a subscription. They require the discipline to think before you choose.
+
+We just built a system that makes the discipline automatic.
 
 ## What's Next
 
-The engine is live and tested. The next pieces:
+The engine runs on the BEAM — Erlang's virtual machine — which means every decision gets its own lightweight process with its own state, its own causal model, and its own conversation history. Any application in our ecosystem can ask the engine a question without leaving the VM.
 
-- **Actionable guidance layer** — concrete next steps with owners, timelines, and tripwires. Not just "here's the analysis" but "here's what to do Monday morning."
-- **Hub integration** — GraybeamHub already collects operational data (analytics, LLM costs, health telemetry) for every app in our fleet. Wiring it to the decision engine means strategic decisions about products like Bouncer get informed by real data, not guesses.
-- **Self-hosted packaging** — the engine as a standalone BEAM release. Bring your own API keys, run it on your own hardware.
+Next, we're wiring it into our operational hub so strategic decisions get informed by real data — actual analytics, actual costs, actual user behavior — not hypothetical projections.
 
-The decision engine isn't a chatbot with a pretty UI. It's a cognitive scaffold backed by real causal inference. And because it's on the BEAM, it's a process, not a service — every app in the ecosystem can think with it.
+And we're packaging it to run on your own hardware, with your own API keys. Because if the decision engine is going to challenge your assumptions and surface your blind spots, it probably shouldn't be sending your strategic thinking to someone else's server.
 
-All the code is Elixir. All the tests pass. The LLM is the thinking partner. The BEAM is the runtime. And the cognitive science is the architecture.
+The code is Elixir. The tests pass. The cognitive science is the architecture. And the LLM isn't the decision-maker — it's the thinking partner that helps you see what you're missing.
+
+That's the part the charts never gave you.
