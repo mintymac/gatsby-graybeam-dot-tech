@@ -4,6 +4,7 @@ category: "Engineering"
 author: "Gray Beam Technology"
 date: 2026-03-18
 draft: false
+cover: "blog-beam-spin-conversion.jpg"
 ---
 
 We had a React + FastAPI + Python app that analyzed music for BPM detection. It worked. It was also 34,000 lines of TypeScript, a Python microservice running a dead ML library from 2017, Docker containers, Redis, nginx reverse proxy, blue-green deployment scripts, and a monitoring service written in Node.js. Keeping it alive was a full-time job.
