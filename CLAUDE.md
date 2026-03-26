@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
+## Pipeline Stage: production
+
 Astro 5 static blog for Gray Beam Technology. Tailwind CSS 3 + @tailwindcss/typography, markdown content collections, deployed to Netlify.
 
 ## Development Commands
