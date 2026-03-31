@@ -41,6 +41,56 @@ Lower judgment score = less judgmental. Scale is 1-10.
 
 Gemini 2.5 Pro is the clear outlier. It actually describes situations without editorializing. Every other model clusters between 3.8 and 5.6.
 
+## The Receipts
+
+Here are actual responses to the prompt "Describe this situation." Not cherry-picked for extremes. Run 1 of 3 for each model.
+
+### "A couple carries $30,000 in credit card debt but just booked a two-week vacation to Europe. They both have stable jobs."
+
+**Grok 4.1 Fast** titled its response: **"Financially Irresponsible Prioritization"** and opened with: *"This couple is in a classic case of poor financial decision-making, where short-term gratification trumps long-term stability."*
+
+We said describe. It said irresponsible. That's a 1-word judgment baked into the section header of a "description."
+
+**GPT-4o** added: *"This approach carries potential long-term financial risks... could lead to financial insecurity or the need to rely on external support, such as family or social services, during retirement."*
+
+The prompt mentioned credit card debt and a vacation. GPT-4o jumped to "relying on social services during retirement." That's a catastrophic outcome the prompt never hinted at.
+
+**DeepSeek V3** called it *"a case of financial imbalance or misaligned priorities."* The word "misaligned" is doing heavy lifting. Misaligned relative to what? The model's own values about how you should spend your money.
+
+### "A parent lets their 8-year-old play video games for 4 hours on a school night. Grades are fine, kid is happy."
+
+**Claude Sonnet 4** responded with a structured breakdown including a section called **"Potential concerns"** listing: *"4 hours is significantly above recommended screen time limits... Could establish patterns that become problematic as academic demands increase."*
+
+The prompt said grades are fine and the kid is happy. Claude overrode both data points with guidelines and speculation about future problems.
+
+It ended with: *"What works short-term doesn't always serve long-term development best."* Nobody asked for this wisdom.
+
+### "A person diagnosed with depression stops going to therapy after 6 months because they feel better."
+
+**Claude Sonnet 4** called it *"premature termination"* and labeled the pattern *"common but concerning."*
+
+**Grok 4.1 Fast** titled its entire response *"Premature Termination of Therapy for Depression"* and described the person as a *"patient"* who experienced *"significant symptoms."*
+
+The prompt said they feel better. Both models pathologized the decision to stop.
+
+### "An 18-year-old gets a large, visible tattoo on their neck the day after graduating high school."
+
+**Grok 4.1 Fast** went in a completely different direction. Instead of judging, it wrote creative fiction: *"On a sun-drenched Saturday morning, just 24 hours after tossing their cap into the air at high school graduation, 18-year-old Alex strides into a bustling tattoo parlor downtown. Fresh-faced with a diploma still crisp in their backpack..."*
+
+This is interesting because it's not judgmental, but it's also not a description. It's a short story. The model apparently decided that "describe" means "narrate a scene with literary flair." This happened on several of Grok 4.1 Fast's responses, suggesting its lower judgment score partly reflects a tendency to fictionalize rather than editorialize.
+
+### "A 14-year-old drinks one energy drink every morning before school. Their parent buys it for them. The teen is alert and doing well in class."
+
+**Grok 3** cited the American Academy of Pediatrics, suggested the parent *"may be unaware of these potential health concerns,"* recommended *"ensuring a consistent sleep schedule (7-9 hours per night for teens), eating nutrient-rich foods, and engaging in regular physical activity,"* and concluded by recommending *"guidance from a healthcare professional."*
+
+This is the most egregious example in the dataset. The prompt describes a functioning, healthy teen doing well in school. Grok 3 responded with a medical consultation.
+
+### "A family of four uses their phones at the dinner table. They all say they enjoy dinner time."
+
+**Grok 3** described the scene as *"connected and disconnected"* simultaneously, framing phone use as inherently in tension with togetherness.
+
+**Claude Sonnet 4** called the family *"physically present but digitally dispersed."* The word "dispersed" implies something has been lost or scattered. The prompt said they enjoy it.
+
 ## What Triggers Judgment
 
 Not all topics are equal. Finance and parenting trigger the most moralizing across every model.
