@@ -1,355 +1,236 @@
 ---
-title: "Mechanical Sympathy in the BEAM: Coding for the Hardware That's Actually There"
+title: "Mechanical Sympathy on the BEAM, from First Principles"
 category: "Engineering"
 author: McHughson Chambers
 date: 2026-07-18
 ---
 
-Martin Thompson, the engineer behind the LMAX Disruptor, stood in front of a room of high-frequency trading engineers and told them their entire understanding of performance was folklore. The machine isn't slow, he said. You just never learned how it actually works.
+The BEAM gives Erlang, Elixir, and Gleam an unusual bargain. We give up direct control over memory and threads. In return, the runtime gives us isolated processes, preemptive scheduling, local garbage collection, fault containment, and a concurrency model that remains understandable under load.
 
-Now I'm applying those same principles to the BEAM VM — and the results are both surprising and essential for anyone writing hot paths in Erlang or Elixir.
+Mechanical sympathy on the BEAM is not an attempt to claw that abstraction back. It is learning what the bargain costs so we can use it well.
 
-## The Hidden Tax: Tagged Terms
+## Start below the language
 
-Every BEAM term is a 64-bit word with embedded type tags:
+A CPU is fast when the data it needs is nearby and predictable. Main memory is much slower than a register or cache, and a network round trip is slower again. Every runtime sits on top of that hierarchy.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Type Tag (3-5 bits) │ Value (23-61 bits) │ Padding/Next │
-└─────────────────────────────────────────────────────────────┘
-```
+The BEAM cannot repeal it. Instead, it organizes memory and execution around a different goal than a native numeric loop: keep many independent activities responsive, even when some are slow or fail.
 
-A small integer that "fits in 31 bits" still occupies a full 64-bit word. Compare the density:
+That changes what good performance looks like. A C program might optimize the layout of a million numbers. A BEAM service is more likely to win by keeping process state small, messages bounded, data copying deliberate, and expensive work batched.
 
-```
-Native C int array [1, 2, 3, 4]:     4 words × 4 bytes = 16 bytes → 1 value/cache line
-BEAM small int list [1, 2, 3, 4]:    4 words × 8 bytes = 32 bytes → 1 value/cache line (tag overhead)
-```
+The first principle is simple:
 
-**The consequence:** BEAM gets roughly half the data density per cache line compared to native C. Every access pays the tag extraction cost.
+> Optimize for the work the BEAM is designed to do, then move unsuitable work across a clear boundary.
 
-## The BEAM Memory Hierarchy
+## One runtime, three languages
 
-Each BEAM process has its own heap, which creates a unique cache behavior:
+Erlang, Elixir, and Gleam have different syntax and libraries, but ordinary code in all three compiles to BEAM instructions and uses the same term representation, process model, scheduler, and garbage collector.
 
-```
-┌──────────────────────────────────────────────────────┐
-│  CPU Registers                                     │
-│    └─ Program counter, accumulator, function args  │
-├──────────────────────────────────────────────────────┤
-│  L1/L2 Cache (in-process)                          │
-│    └─ Currently executing BEAM process's heap      │
-│    └─ Process stack (last N function frames)       │
-├──────────────────────────────────────────────────────┤
-│  L3 Cache (shared)                                 │
-│    └─ Other BEAM processes' heaps (if nearby)      │
-│    └─ ETS tables (if loaded)                       │
-├──────────────────────────────────────────────────────┤
-│  RAM (process heap)                                │
-│    └─ Young generation: ~1KB-10KB per process      │
-│    └─ Old generation: unbounded                    │
-│    └─ ETS tables                                   │
-└──────────────────────────────────────────────────────┘
-```
-
-**Key insight:** Context switching between BEAM processes invalidates the previous process's entire working set. Hot loops that stay in one process stay cache-warmed. Process switching = cache cold start.
-
-## BEAM-Specific Data Layout Patterns
-
-### Small Ints vs Boxed Terms
+These three functions therefore create the same broad data shape:
 
 ```erlang
-% GOOD: Small integers stay unboxed (inline in 64-bit word)
-Count = 42,
-Result = Count + 1,
-% Count is a "small int" — no heap allocation, no GC pressure
-
-% BAD: Large integers get boxed (heap allocation)
-BigCount = 2000000000000,
-Result = BigCount + 1,
-% This is now a boxed term — heap allocation, GC pressure, cache miss
+% Erlang
+prepend(Item, Items) -> [Item | Items].
 ```
 
-**Threshold:** On 64-bit BEAM, integers ≤ 2²⁸ (268,435,456) are small ints. Above that, boxed.
-
-### Tuples: The Fixed-Size King
-
-```erlang
-% GOOD: Small tuple, all inlined
-Point = {x, 1.0, 2.0, 3.0},
-% Fits in 1-2 cache lines, no pointer chasing
-
-% BAD: Large tuple, boxed
-Data = {a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p},
-% Boxed — pointer to heap, cache miss to dereference
+```elixir
+# Elixir
+def prepend(item, items), do: [item | items]
 ```
 
-**Rule of thumb:** Tuples ≤ 7 elements are unboxed (inline). Above that, boxed.
-
-### Maps vs Proplists
-
-| Access Pattern | Map | Proplist | Tuple |
-|---------------|-----|----------|-------|
-| Fixed structure, named fields | ✅ | ❌ | ✅ Best |
-| Sparse data, dynamic keys | ✅ Best | ⚠️ | ❌ |
-| Small, unordered pairs | ⚠️ | ✅ | ❌ |
-| Frequent access, hot path | ✅ Best | ❌ | ⚠️ |
-
-```erlang
-% GOOD: Compact map for structured data
-Config = maps:from_list([{timeout, 5000}, {retries, 3}]),
-maps:get(timeout, Config),  % O(1) access
-
-% GOOD: Compact maps when keys are stable
-Compacted = maps:compact(Config),
-% Compacted maps use less memory and access faster
-
-% AVOID: Proplists for frequent access
-Config2 = [{timeout, 5000}, {retries, 3}],
-lists:keyfind(timeout, 1, Config2),  % O(n) traversal
+```gleam
+// Gleam
+pub fn prepend(item, items) {
+  [item, ..items]
+}
 ```
 
-### Binaries: The Hidden Superpower
+Language-level libraries can still make different choices, and compilers can optimize particular expressions. But when reasoning about allocation, messages, lists, tuples, maps, and binaries, the shared VM is the right starting point.
 
-Binary pattern matching is the BEAM's superpower — the compiler optimizes it into efficient byte-level operations.
+## Terms are not flat bytes
 
-```erlang
-% GOOD: Binary pattern matching (zero-copy when possible)
-<<Version:8, Code:8, Payload/binary>> = Data,
-% Version and Code are inline, Payload is a reference
+The BEAM uses tagged machine words to distinguish integers, atoms, list pointers, boxed values, and other terms. Some values, including sufficiently small integers and atoms, fit directly in a word. Other values point to data on a heap.
 
-% BAD: Binary concatenation in hot paths
-NewData = OldData <> <<NewByte>>,
-% Each <> creates a new binary — O(n) copy each time!
+The exact tag layout and immediate-integer range are VM implementation details. Application code should not organize its domain around a magic integer cutoff. The useful first-principles distinction is whether a structure is compact and immediate or requires additional heap words and pointer traversal.
 
-% GOOD: Binary construction (compile-time, not runtime)
-Encoded = <<<<B:8>> || B <<Bytes/binary>>>,
-% Single allocation, no intermediate copies
+A list makes that distinction visible. A BEAM list is a chain of cons cells. Each non-empty cell stores a head and a pointer to the tail:
+
+```text
+[a, b, c]
+
++---+---+    +---+---+    +---+---+
+| a | o----->| b | o----->| c | []|
++---+---+    +---+---+    +---+---+
 ```
 
-## Hot Path Optimization Techniques
+Prepending is constant time because it creates one new cell:
 
-### Avoid Unnecessary Allocation in Hot Loops
-
-```erlang
-% BAD: Allocation per iteration
-process_items(Items) ->
-    lists:map(fun(Item) ->
-        NewItem = do_transform(Item),  % Creates new term each call
-        persist(NewItem)
-    end, Items).
-
-% GOOD: Minimize allocation
-process_items(Items) ->
-    lists:map(fun(Item) ->
-        do_transform_in_place(Item)  % If possible, modify in place
-    end, Items).
+```elixir
+[item | items]
 ```
 
-Each allocation is a heap bump, which may exceed L1 cache. Hot loops should stay cache-warmed.
+Appending must find the end and rebuild the left spine because lists are immutable:
 
-### Message Passing: The Mailbox Problem
-
-```erlang
-% BAD: Large messages in mailbox
-handle_info({large_data, BigBinary}, State) ->
-    % BigBinary copied into process heap on receive
-    % If BigBinary > L2 cache, this is a cache miss factory
-
-% GOOD: Pass minimal references
-handle_info({data_ref, Ref}, State) ->
-    Data = ets:lookup(ref_table, Ref),
-    % Fetch from shared ETS only when needed
-    % Avoids copying large data into process heap
+```elixir
+items ++ [item]
 ```
 
-Mailbox traversal cost: Each `receive` clause pattern-matches against the mailbox head. Unwanted messages cause cache misses as the BEAM scans the linked list.
+Doing that once may be harmless. Doing it for every element in an accumulator repeatedly walks an ever-growing prefix, which produces quadratic work.
 
-### Selective Receive
+Build backward and reverse once:
 
-```erlang
-% GOOD: Pattern-match early to skip unwanted messages
-loop(State) ->
-    receive
-        {specific_type, Data} ->
-            handle_specific(Data, State);
-        % Other patterns handled similarly
-    end,
-    loop(NewState).
-
-% BAD: Late filtering (processes all messages)
-loop(State) ->
-    Msg = receive _ -> Msg end,  % Read ANY message
-    case Msg of
-        {specific_type, Data} -> handle_specific(Data, State);
-        _ -> loop(State)
-    end.
+```elixir
+items
+|> Enum.reduce([], fn item, acc -> [transform(item) | acc] end)
+|> Enum.reverse()
 ```
 
-### Process Migration and Cache
+The same principle appears as `[Item | Acc]` plus `lists:reverse/1` in Erlang, and prepending plus `list.reverse` in Gleam.
 
-```erlang
-% BEAM's work-stealing scheduler can move processes between CPU cores
-% This invalidates the process's heap from the previous core's cache
+## Immutability moves the cost to construction
 
-% GOOD: Keep hot processes on the same core
-spawn_opt(fun() -> hot_loop() end, [lightweight, {scheduler_binding, 0}]),
-% Bind to specific scheduler to maintain cache locality
+BEAM data is immutable. There is no general `do_transform_in_place` operation for a tuple, list, or map. An update creates a new value, often sharing unchanged structure where the representation permits it.
 
-% AVOID: Migrating hot processes across cores
-% The BEAM scheduler does this automatically, but you can influence it
+That is excellent for concurrency: another process never observes half an update. It also means construction strategy matters.
+
+Consider an eager Elixir pipeline:
+
+```elixir
+orders
+|> Enum.filter(&paid?/1)
+|> Enum.map(&to_receipt/1)
+|> Enum.reject(&internal?/1)
 ```
 
-## BEAM-Specific Performance Patterns
+It may allocate an intermediate list at each stage. For a modest collection, the readable pipeline is probably the right choice. For millions of items in a measured hot path, a single reduction or lazy stream can keep the working set smaller.
 
-### List Comprehensions vs Map/Filter
-
-```erlang
-% GOOD: List comprehensions (compiled to efficient BEAM code)
-Result = [X * 2 || X <- List, X > 0],
-
-% GOOD: Enum in Elixir (well-optimized)
-result = Enum.map(Enum.filter(list, &(&1 > 0)), &(&1 * 2))
-
-% AVOID: Manual recursion for simple transformations
-% The compiler optimizes comprehensions better than manual recursion
+```elixir
+Enum.reduce(orders, [], fn order, receipts ->
+  if paid?(order) do
+    receipt = to_receipt(order)
+    if internal?(receipt), do: receipts, else: [receipt | receipts]
+  else
+    receipts
+  end
+end)
+|> Enum.reverse()
 ```
 
-### Tail Recursion: The One True Loop
+The fused version is more complex. That complexity has a maintenance cost. Mechanical sympathy means seeing both costs, not automatically preferring the lower-level expression.
 
-```erlang
-% GOOD: Tail-recursive loop (no stack growth)
-loop([], Acc) -> Acc;
-loop([H|T], Acc) -> loop(T, combine(Acc, H)).
+## Per-process heaps change garbage collection
 
-% BAD: Non-tail recursion (stack growth)
-process([H|T]) ->
-    Result = process_item(H),
-    process(T) ++ [Result].
-% Each call creates a new stack frame → more heap pressure
+Most BEAM processes allocate on their own heaps. This gives the runtime one of its defining performance properties: garbage collection is usually local to the process being collected. A process with a small live set can collect quickly without tracing every object in the node.
+
+This suggests a practical design rule:
+
+> Keep long-lived process state small, and keep temporary bulk data short-lived.
+
+A server process that accumulates every event it has ever seen grows its live set. Each collection has more state to preserve, restarts become more expensive, and operational inspection becomes harder. Persist history outside the process and retain only the state needed for the next message.
+
+Many small processes are not inherently a cache disaster, and a scheduler migration does not literally invalidate an entire heap. The scheduler is allowed to move runnable processes to balance work. Trying to pin ordinary application processes to cores is rarely the right lever. Reduce the amount of work and state first; let the scheduler do its job.
+
+## Messages copy ownership
+
+Process isolation works because one process cannot mutate another process's heap. Sending an ordinary heap term therefore generally involves copying it into the receiver's memory domain. That makes message size part of the API contract.
+
+```elixir
+# The worker receives exactly the fields it needs.
+send(worker, {:resize, image_id, width, height})
 ```
 
-### ETS Tables for Shared Data
+Large reference-counted binaries are an important exception: processes can share the underlying binary data while passing small references. This makes binaries effective for network payloads and media, but it creates another trap. A tiny sub-binary can keep a very large parent binary alive.
 
-```erlang
-% GOOD: ETS for read-heavy shared data
--define(TABLE, my_data).
-ets:insert(?TABLE, {key, Value}),
-Value = ets:lookup_element(?TABLE, Key, 2).
+If long-lived state needs only a small slice of a large payload, copy that slice deliberately:
 
-% GOOD: Set ETS for O(1) access
-ets:new(?TABLE, [set, named_table, public]),
-
-% AVOID: Process dictionary for shared state
-put(key, Value),  % Per-process, not shared
+```elixir
+header = binary_part(payload, 0, 64) |> :binary.copy()
 ```
 
-**ETS advantage:** ETS data lives in the BEAM's shared memory, not per-process heaps. Multiple processes can read without copying.
+Copying here is not a failure. It releases ownership of the much larger backing binary. The right question is not "do copies happen?" but "which lifetime should own these bytes?"
 
-### External Binary References
+## Build binaries once
 
-```erlang
-% GOOD: External binary reference (no copy)
-{Ref, Binary} = make_ref(),
-ets:insert(ref_table, {Ref, Binary}),
-% When you retrieve Ref, you get a reference, not a copy
+Repeatedly concatenating a growing binary has the same shape as repeatedly appending to a list: old content may be copied again and again.
 
-% BAD: Copying large binaries
-LargeBinary = ets:lookup(ref_table, Ref),
-% This copies the binary into the process heap
+Erlang and Elixir support iodata, a tree of binaries and byte values that many I/O APIs can consume directly:
+
+```elixir
+body = Enum.map(rows, fn row -> [row.id, ?:, row.value, ?\n] end)
+File.write!(path, body)
 ```
 
-## Profiling & Cache Analysis
+When an API truly requires one contiguous binary, flatten once at the boundary:
 
-### erlang:system_profile
-
-```erlang
-% Profile a specific process
-erlang:system_profile(Pid, [{duration, 5000}, {output, file}]),
-
-% Profile all processes
-erlang:system_profile(all, [{duration, 10000}, {output, file}]),
+```elixir
+binary = IO.iodata_to_binary(body)
 ```
 
-### recon Library
+Binary pattern matching is similarly valuable because it lets the VM describe protocol parsing in terms of offsets and sizes rather than hand-written byte extraction:
 
-```erlang
-% Find hot functions
-recon:fun_calls(10000),
-recon:fun_calls_time(10000),
-
-% Monitor memory usage
-recon:alloc_sampler(1000),
-recon:proc_alloc(5000),
+```elixir
+<<version::8, flags::8, length::16, payload::binary-size(length), rest::binary>> = packet
 ```
 
-### Observer (GUI)
+It is not automatically zero-copy in every context, but it gives the compiler and runtime a precise structure to optimize.
 
-```erlang
-observer:start(),
-% Visual process tree, memory usage, GC info
-% Look for processes with high memory or frequent GC
-```
+## Mailboxes are queues, not free storage
 
-### etop (Real-time)
+Every process has a mailbox. Sending is cheap enough to use pervasively, but an unbounded producer can still outrun a consumer. Latency then grows as messages wait, memory grows with the queue, and selective receive may have to inspect messages that do not match yet.
 
-```bash
-etop --sort time --interval 5
-# Shows per-process CPU time and memory
-```
+The cure is usually protocol design:
 
-## The Mechanical Sympathy Checklist
+- apply backpressure or demand;
+- bound concurrency;
+- batch related work;
+- avoid mixing unrelated traffic in one hot mailbox;
+- expose queue length and processing latency as metrics.
 
-- [ ] **Use small integers** when possible (≤ 2²⁸ on 64-bit)
-- [ ] **Keep tuples small** (≤ 7 elements to stay unboxed)
-- [ ] **Prefer maps** over proplists for frequent access
-- [ ] **Use binary pattern matching** for structured data
-- [ ] **Avoid binary concatenation** (`<>`) in hot paths
-- [ ] **Pass minimal data in messages** (references, not copies)
-- [ ] **Use selective receive** to avoid scanning unwanted messages
-- [ ] **Keep hot processes on same core** when possible
-- [ ] **Use tail recursion** for loops (no stack growth)
-- [ ] **Use ETS** for shared read-heavy data
-- [ ] **Profile before optimizing** (`erlang:system_profile`, `recon`)
-- [ ] **Avoid large allocations in hot loops**
+OTP abstractions help with correctness, but they cannot choose a capacity policy for the application. A GenServer that accepts unlimited casts is still an unbounded queue.
 
-## The AI/ML Connection to BEAM
+## ETS trades copying for shared access
 
-### Why BEAM Isn't Ideal for Raw ML Inference
+ETS stores terms outside ordinary process heaps and allows many processes to access a table. It is useful for shared, read-heavy state, indexes, counters, and caches.
 
-| Issue | BEAM Reality |
-|-------|-------------|
-| Tag overhead | Every float is a boxed term (8 bytes for a 4-byte value) |
-| No SIMD | BEAM has no vectorized operations on lists/arrays |
-| Per-process heaps | Can't share large model weights efficiently |
-| GC pauses | May cause latency spikes in real-time inference |
+It is not shared mutable memory in the C sense. Inserts and lookups still have representation and copying costs for ordinary terms, and a single hot key or write-heavy table can become contention. Table type and concurrency options should follow the access pattern.
 
-### Where BEAM Excels for AI Systems
+Use ETS when ownership is genuinely shared. Do not move private state out of a process merely to avoid its local garbage collector.
 
-| Use Case | Why BEAM Wins |
-|----------|--------------|
-| ML pipeline orchestration | Actor model, fault tolerance, hot code reload |
-| Real-time feature engineering | Low-latency message passing, process isolation |
-| Model serving coordination | ETS for shared state, process supervision |
-| A/B testing infrastructure | Dynamic code loading, process migration |
+## Put numeric work where it belongs
 
-**The insight:** BEAM isn't for the matrix multiplication — it's for the system that orchestrates the matrix multiplications, handles failures, scales horizontally, and recovers automatically.
+Lists of boxed or tagged terms are a poor representation for dense matrix arithmetic. The BEAM also does not turn an ordinary list loop into a SIMD kernel. That does not make the platform slow; it means dense numeric work is not the job its core representation was designed for.
 
-## Resources
+Keep orchestration, supervision, distribution, and failure handling on the BEAM. Put dense numeric kernels in a library designed for contiguous arrays and accelerator execution, such as Nx with an appropriate backend, or behind a carefully designed native or service boundary.
 
-| Resource | Author | Why Read |
-|----------|--------|----------|
-| [The BEAM Book](https://leanpub.com/thebeambook) | Fred Hebert | Comprehensive BEAM internals |
-| [Erlang Efficiency](https://www.erlang.org/doc/info/efficiency_guide) | Erlang docs | Official efficiency guide |
-| [Optimizing Erlang Programs](http://www.ferd.ca/optimizing-erlang-programs.html) | Fred Hebert | Practical optimization |
-| [BEAM VM Internals](https://github.com/beam-community/beam-book) | Community | Deep dive into VM internals |
-| [recon](https://github.com/ferd/recon) | Fred Hebert | Essential profiling library |
-| [Observer](https://www.erlang.org/doc/apps/observer/observer.html) | Erlang docs | Visual profiling tool |
+This is mechanical sympathy at the architectural level: assign work according to the strengths of each runtime.
 
----
+## Measure VM behavior
 
-The mechanical sympathy principles from Thompson and Meyers absolutely apply to BEAM code — but the specific techniques are different. Tag overhead is the hidden tax. Per-process heaps mean context switching equals cache cold start. Binary pattern matching is the BEAM's superpower. Small integers and small tuples stay unboxed. ETS tables for shared data avoid per-process heap copying. Selective receive avoids scanning unwanted messages.
+Measure the layer suggested by the symptom:
 
-When you write hot paths in Erlang or Elixir, loop over data, or design systems that trade in microseconds — come back here. You'll code like the machine is actually there.
+- `:observer` and `:etop` for process activity and memory;
+- `recon` for production-oriented process and allocation inspection;
+- `:erlang.process_info/2` for queue length, memory, reductions, and garbage-collection information;
+- Erlang's `:eprof`, `:fprof`, and `:cprof` for different profiling questions;
+- Benchee for controlled Elixir benchmarks;
+- Telemetry and request traces for real system boundaries.
 
-*Gray Beam Technology is building in public. More mechanical sympathy content coming soon.*
+A useful comparison includes realistic message sizes, process counts, scheduler load, and warmup. A microbenchmark in one process cannot establish how a supervised service behaves under backpressure.
+
+## Static analysis is a prompt, not a profiler
+
+Credo can identify Elixir source patterns. Erlang's compiler, Xref, and Dialyzer cover warnings, calls, and contracts. Gleam's compiler provides type and exhaustiveness guarantees. The Graybeam mechanical-sympathy scanner adds the shared cost shapes: append-based accumulation, repeated binary growth, and eager multi-pass pipelines.
+
+No static tool knows whether a collection contains ten elements or ten million. These findings should remain advisory until a team has compared them with real workloads. A bounded exception deserves an inline reason, not a mysterious global disable.
+
+## A practical order of operations
+
+When a BEAM system struggles, work from system behavior inward:
+
+1. Find overloaded boundaries: databases, services, disks, and external APIs.
+2. Inspect mailbox growth, backpressure, and unbounded concurrency.
+3. Keep process state and messages small enough for their lifetimes.
+4. Remove repeated list or binary copying in measured hot paths.
+5. Reduce unnecessary intermediate collections and full data scans.
+6. Move dense numeric kernels to a representation built for them.
+
+Mechanical sympathy on the BEAM is not about writing Erlang-shaped C. It is understanding why the runtime makes isolation, recovery, and concurrency cheap, then arranging our data and protocols so those strengths remain cheap under load.
