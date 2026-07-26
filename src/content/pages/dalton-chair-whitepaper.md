@@ -2,14 +2,14 @@
 title: "Dalton Chair Whitepaper: Protocol Specification 1.1"
 ---
 
-This is the published whitepaper edition of **DCSPEC-1.1**, the draft Dalton
-Chair protocol standard. The canonical specification is maintained in the
+This whitepaper presents **DCSPEC-1.1**, the draft Dalton Chair protocol
+standard. The canonical specification is maintained in the
 [GrayPress repository](https://gitlab.com/graybeam/graypress/-/blob/main/docs/dalton-chair-spec.md).
-Normative requirements begin below and retain the language and test vectors of
-the source specification.
+The technical requirements begin below. They match the language and test
+vectors in the source specification.
 
 **Version:** 1.1 (DCSPEC-1.1)
-**Status:** Draft Standard — GrayBeam
+**Status:** Draft Standard from GrayBeam
 **Reference implementation:** GrayPress (`lib/graypress/dalton_chair*`)
 **Independent verifier:** `mix graypress.audit`
 
@@ -17,12 +17,12 @@ the source specification.
 
 ## Abstract
 
-Dalton Chair is a protocol for verifiable web application integrity: proving
-that the code a server serves is byte-identical to the code a known signer
-signed. This document is the normative contract. It is written so that an
-implementation can be produced — a signing pipeline, a boot verifier, a
-client-side verifier, or an independent auditor — without reading the
-reference implementation's source code.
+Dalton Chair is a protocol for checking the integrity of a web application.
+It lets someone confirm that the code served by a website is byte-for-byte
+identical to code approved by a known signer. This document defines the rules
+that implementations must follow. It includes enough detail to build a signing
+pipeline, boot verifier, client-side verifier, or independent auditor without
+having to read the reference implementation's source code.
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
 "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
@@ -37,15 +37,15 @@ interpreted as described in RFC 2119 / RFC 8174.
 The protocol distinguishes four roles. Conflating them is the most common
 way integrity schemes fail.
 
-- **Signer** — holds the Ed25519 private key and signs manifests at build
+- **Signer:** holds the Ed25519 private key and signs manifests at build
   time. The signer SHOULD be isolated from build and production
   infrastructure (air-gapped machine or HSM).
-- **Operator** — runs the server that serves the application. The operator
+- **Operator:** runs the server that serves the application. The operator
   is *not trusted* by the protocol; the protocol exists because the
   operator may be compromised or coerced.
-- **Verifier** — checks the integrity of running or received code. The
+- **Verifier:** checks the integrity of running or received code. The
   server at boot and the browser at runtime are both verifiers.
-- **Auditor** — a verifier with no relationship to the operator, checking
+- **Auditor:** a verifier with no relationship to the operator, checking
   a live server from outside. Auditors provide the protocol's primary
   security property: public detectability of modification.
 
@@ -56,11 +56,11 @@ is verifying. Every procedure below is designed around this axiom.
 
 A correct deployment provides:
 
-1. **Tamper evidence** — any post-signing modification of covered artifacts
+1. **Tamper evidence:** any change to covered files after signing
    is detectable by verifiers.
-2. **Signer accountability** — every accepted manifest is bound to a
+2. **Signer accountability:** every accepted manifest is tied to a
    specific Ed25519 key.
-3. **Public auditability** — third parties can verify a live server without
+3. **Public auditability:** third parties can verify a live server without
    cooperation from the operator.
 
 The protocol does not prevent modification; it makes modification
@@ -87,7 +87,7 @@ exactly the following fields. All values are JSON strings.
 
 A manifest containing additional fields is not conforming. Parsers
 encountering additional top-level fields MUST reject the manifest as
-`invalid_manifest` — silent tolerance of extra fields breaks signature
+`invalid_manifest`. Quietly accepting extra fields breaks signature
 interop between strict and lenient implementations.
 
 ### 2.1 Example (informative)
@@ -114,8 +114,8 @@ Signing and verification operate over a canonical byte sequence, never over
 the JSON text as stored or transmitted.
 
 1. Remove the `signature` field from the manifest object.
-2. Encode the remaining object with **JCS — JSON Canonicalization Scheme,
-   RFC 8785**.
+2. Encode the remaining object with **JCS, the JSON Canonicalization Scheme
+   defined by RFC 8785**.
 
 The result is the **canonical payload**. Because every manifest value is a
 JSON string, any RFC 8785-conforming implementation produces byte-identical
@@ -166,13 +166,12 @@ framework-specific shapes. The manifest fields `release_hash` and
 `crypto_js_hash` are defined generically; their *construction* is
 profile-specific.
 
-The invariant every profile MUST satisfy: **build-time and runtime hashing
-resolve the same artifact the deployed system actually executes or
-serves.** Hashing a file that is not the executed/served one — including a
-stale artifact in the same directory — is a profile violation. (This
-violation occurred in production in the reference implementation when the
-served bundle was selected by directory globbing rather than by the
-framework's digest manifest.)
+Every profile MUST follow one core rule: **build-time and runtime hashing
+must resolve the same artifact that the deployed system actually executes or
+serves.** Hashing any other file is a profile violation. That includes a stale
+artifact left in the same directory. The reference implementation once hit
+this problem in production because it selected the served bundle with a
+directory glob instead of using the framework's digest manifest.
 
 ### 5.1 Profile: `beam-release` (for `release_hash`)
 
@@ -247,7 +246,7 @@ On startup, before accepting traffic:
 ### 7.2 Client verification (browser)
 
 1. Obtain the expected `crypto_js_hash` from a trust anchor that is not the
-   operator — in the current protocol level, this is the hard problem
+   operator. At the current protocol level, this is the hard problem
    documented in Section 12.2. Implementations MAY fetch the operator's
    `/dalton-chair` status as an *advisory* source, but MUST NOT present
    the result as operator-independent verification.
@@ -269,7 +268,8 @@ An auditor verifies a live server without trusting it:
 5. Verify: signature valid (Section 4); `signer_public_key` equals the
    auditor's trust anchor; bundle hash equals `crypto_js_hash`.
 6. The auditor MUST ignore the status payload's self-reported `verified`
-   and `checks` fields — they are the operator grading its own homework.
+   and `checks` fields. Those fields amount to the operator grading its own
+   work.
 7. The audit MUST produce an unambiguous pass/fail result suitable for
    automation (the reference auditor exits non-zero on failure).
 
@@ -278,10 +278,10 @@ An auditor verifies a live server without trusting it:
 Operators MUST expose `GET /dalton-chair` returning the manifest fields
 plus derived fields:
 
-- `verified` (boolean) — conjunction of the three checks
-- `checks` — per-check booleans: `signature`, `release_hash`,
+- `verified` (boolean): the result of combining all three checks
+- `checks`: individual booleans for `signature`, `release_hash`,
   `crypto_js_hash`
-- `signer_pinned` (boolean) — whether a compile-time pin is active
+- `signer_pinned` (boolean): whether a compile-time pin is active
 
 On failure to load a manifest: `{ "verified": false, "reason": <code> }`.
 
@@ -461,11 +461,11 @@ v0Yo/imbkXscoAAgvjvTzZeFUvQ4Db0khDQ9XBkREkk=
 
 **Negative vectors.** Verifying implementations MUST return:
 
-- `invalid_signature` — the manifest above with any single field value
+- `invalid_signature`: the manifest above with any single field value
   altered (e.g. `release_hash` set to `"tampered"`).
-- `untrusted_signer` — the manifest above verified against any pinned
+- `untrusted_signer`: the manifest above verified against any pinned
   signer other than the test public key.
-- `malformed_manifest` — the manifest above with `signature` removed.
+- `malformed_manifest`: the manifest above with `signature` removed.
 
 ---
 
