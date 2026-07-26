@@ -6,13 +6,15 @@ date: 2026-07-26T12:00:00-05:00
 cover: "/images/blog-dalton-chair-code-transparency.webp"
 ---
 
-> **TL;DR:** Dalton Chair records SHA-256 fingerprints of a web application's
-> server release and browser JavaScript in a manifest signed with an Ed25519
-> key. An independent auditor downloads the live JavaScript, verifies the
-> signature against a separately trusted public key, and checks that the bytes
-> match the signed fingerprint. It detects when a server serves different code
-> than the signer approved. It does not prove that the approved code is safe,
-> prevent tampering, or make an in-page verifier independent of that server.
+> **TL;DR:** Dalton Chair checks whether a website is sending your browser the
+> same JavaScript that an authorized developer approved. It fingerprints the
+> server release and browser code with SHA-256, then protects those
+> fingerprints with an Ed25519 signature. An outside auditor downloads the
+> live code and checks the fingerprint, signature, and signer. A passing check
+> shows that the code matches the signed release. It does not show that the
+> code is bug-free or stop an attacker from changing it. A checker loaded
+> from the same website can also be changed by that website, so independent
+> auditing still matters.
 > [Read the DCSPEC-1.1 whitepaper](/dalton-chair-whitepaper/).
 
 Imagine opening an encrypted web app. The page says your messages are private. The connection uses HTTPS. The app encrypts each message before sending it.
@@ -25,7 +27,7 @@ The answer is usually the same server you are trying to protect yourself from. I
 
 HTTPS does not solve this. HTTPS proves that the bytes came from the server named in the certificate. It does not prove that those are the bytes the developer approved.
 
-Dalton Chair is a draft protocol for closing part of that gap. It gives a web release a signed fingerprint, checks the running release against that fingerprint, and lets an outside auditor compare the JavaScript served to users with the JavaScript that was signed.
+Dalton Chair is a draft protocol that addresses part of this problem. It gives each web release a signed fingerprint. The running server can check itself against that fingerprint, and an outside auditor can compare the JavaScript sent to users with the JavaScript the developer approved.
 
 The goal is not to make tampering impossible. The goal is to make tampering detectable.
 
@@ -240,7 +242,7 @@ The specification calls this the **extension gap**. Naming it is a strength. Sec
 
 ## Review of draft version 1.1
 
-DCSPEC-1.1 has several unusually good properties for a young protocol:
+DCSPEC-1.1 gets several important things right:
 
 - It defines an exact manifest instead of saying "sign some metadata."
 - It uses standard building blocks: SHA-256, Ed25519, RFC 3339, and RFC 8785.
@@ -249,7 +251,7 @@ DCSPEC-1.1 has several unusually good properties for a young protocol:
 - It requires independent auditors to ignore the server's self-reported verdict.
 - It states its limits instead of calling detection prevention.
 
-The document is still a draft. Before calling version 1.1 a stable standard, I would tighten six areas.
+It is still a draft. Before treating version 1.1 as a stable standard, I would tighten six areas.
 
 ### 1. Add rollback protection
 
@@ -287,7 +289,7 @@ lengths, and non-string values.
 
 An Algorand box is storage. Whether a record can be overwritten depends on the application code controlling that box. The registry profile should define duplicate-version behavior and require the contract or log to reject mutation, not merely promise that the surrounding chain records transactions.
 
-These are fixable protocol questions. None removes the value of signing and independently auditing live code. They mark the difference between a solid reference implementation and a standard that unrelated teams can implement the same way.
+These issues can be fixed. They do not take away from the value of signing and independently auditing live code. They are the work needed to turn a solid reference implementation into a standard that different teams can implement in the same way.
 
 ## Why this is worth building
 
@@ -307,7 +309,7 @@ running server and downloaded JavaScript
 an independent auditor
 ```
 
-It is not a silver bullet. It is a clear, testable step from "the server says this code is safe" toward "here are the bytes, signature, trusted key, and public record; check them yourself."
+It does not solve every security problem. It replaces "the server says this code is safe" with something testable: here are the bytes, the signature, the trusted key, and the public record. Check them yourself.
 
 That is what useful security engineering looks like: narrow claims, standard cryptography, independent checks, and enough detail for someone else to prove you wrong.
 
