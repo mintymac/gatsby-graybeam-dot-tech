@@ -6,6 +6,15 @@ date: 2026-07-26T12:00:00-05:00
 cover: "/images/blog-dalton-chair-code-transparency.webp"
 ---
 
+> **TL;DR:** Dalton Chair records SHA-256 fingerprints of a web application's
+> server release and browser JavaScript in a manifest signed with an Ed25519
+> key. An independent auditor downloads the live JavaScript, verifies the
+> signature against a separately trusted public key, and checks that the bytes
+> match the signed fingerprint. It detects when a server serves different code
+> than the signer approved. It does not prove that the approved code is safe,
+> prevent tampering, or make an in-page verifier independent of that server.
+> [Read the DCSPEC-1.1 whitepaper](/dalton-chair-whitepaper/).
+
 Imagine opening an encrypted web app. The page says your messages are private. The connection uses HTTPS. The app encrypts each message before sending it.
 
 There is still a hard question:
@@ -164,7 +173,8 @@ The independent auditor performs its own work:
 
 1. Fetch `/dalton-chair` from the live server.
 2. Fetch the site's HTML.
-3. Find the digested application bundle named in that HTML.
+3. Find the digested application bundle named in that HTML, matching on the
+   URL path so a cache-busting query string does not hide it.
 4. Download that bundle and hash its bytes.
 5. Verify the manifest's Ed25519 signature.
 6. Check that the manifest signer equals a public key obtained somewhere else.
@@ -233,7 +243,7 @@ The specification calls this the **extension gap**. Naming it is a strength. Sec
 DCSPEC-1.1 has several unusually good properties for a young protocol:
 
 - It defines an exact manifest instead of saying "sign some metadata."
-- It uses standard algorithms: SHA-256, Ed25519, RFC 3339, and RFC 8785.
+- It uses standard building blocks: SHA-256, Ed25519, RFC 3339, and RFC 8785.
 - It includes exact positive and negative test vectors.
 - It separates signature validity from signer trust.
 - It requires independent auditors to ignore the server's self-reported verdict.
@@ -261,15 +271,17 @@ Strict boot checks remain useful, but the specification should describe them as 
 
 ### 4. Define the full release boundary
 
-The `beam-release` profile hashes `.beam` files but does not include filenames, dependency applications, configuration, executable scripts, or files under `priv`. Renaming a file may not affect the current aggregate hash, and important runtime behavior can live outside the application's own `ebin` directory.
+The `beam-release` profile uses filenames to sort the per-file hashes, but it does not hash the filenames or paths themselves. A rename that leaves a file in the same sort position can leave the aggregate unchanged, while a rename that changes the order changes the hash. Dependency applications, configuration, executable scripts, and files under `priv` are also outside the profile, even though they can affect runtime behavior.
 
 A stable profile should state exactly which files are security-relevant and include both each relative path and its content hash in an unambiguous structure.
 
-### 5. Make validation errors consistent
+### 5. Complete structural validation
 
-One section treats missing required fields as `malformed_manifest`; another defines that case as `invalid_manifest`. Implementations need one answer so monitoring and test suites agree.
-
-The verification procedure should also say explicitly how to reject malformed timestamps, non-hex hashes, wrong hash lengths, unknown versions, and non-string values.
+Version 1.1 now distinguishes an invalid manifest, which cannot be interpreted
+under the protocol, from a malformed manifest whose required fields are absent
+or structurally wrong. The verification procedure should go further and say
+explicitly how to reject malformed timestamps, non-hex hashes, wrong hash
+lengths, and non-string values.
 
 ### 6. Specify registry immutability
 
@@ -299,4 +311,4 @@ It is not a silver bullet. It is a clear, testable step from "the server says th
 
 That is what useful security engineering looks like: narrow claims, standard cryptography, independent checks, and enough detail for someone else to prove you wrong.
 
-The full draft is available in the [Dalton Chair Protocol Specification](https://gitlab.com/graybeam/graypress/-/blob/main/docs/dalton-chair-spec.md). GrayPress is the reference implementation.
+Read the published [Dalton Chair Protocol Specification whitepaper](/dalton-chair-whitepaper/) or its [canonical source](https://gitlab.com/graybeam/graypress/-/blob/main/docs/dalton-chair-spec.md). GrayPress is the reference implementation.
