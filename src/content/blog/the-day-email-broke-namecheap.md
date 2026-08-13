@@ -70,4 +70,4 @@ The only real defense is to make leaving easy. Not because you plan to leave, bu
 
 Switchboard is that defense, written down as a tool. It is open source. It is a single static binary. It refuses to touch your source mailbox. And it turns a week of anxiety into a sequence you can run in an afternoon.
 
-The code is at [github.com/graybeam-tech/switchboard](https://github.com/graybeam-tech/switchboard). If your email is fine today, that is the best possible time to know how you would move it.
+The code is at [gitlab.com/graybeam/switchboard](https://gitlab.com/graybeam/switchboard). If your email is fine today, that is the best possible time to know how you would move it.
