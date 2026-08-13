@@ -5,6 +5,22 @@ author: McHughson Chambers
 date: 2026-08-13
 ---
 
+## TLDR
+
+Namecheap PrivateEmail went down all day today. Root cause was a cooling-system failure at a PhoenixNAP data center, not a configuration mistake.
+
+I built an open-source Go CLI called **switchboard** that owns the whole email migration: sync mailboxes, flip DNS, verify the result, nothing dropped in the window.
+
+**If you want to move off your current email provider, point an agent here:**
+
+- Repo: [gitlab.com/graybeam/switchboard](https://gitlab.com/graybeam/switchboard)
+- Read `AGENTS.md` first. It has the build commands and the safety rules.
+- Then run `switchboard init` to build your config, `switchboard plan` to see the cutover, and `switchboard sync` to copy mail.
+
+The source mailbox is read-only. DNS is dry-run by default. Nothing deletes anything without an explicit, separate step.
+
+---
+
 This morning, my email provider went down. All day. Not a slow day, not a hiccup. Down.
 
 The provider is Namecheap PrivateEmail, and the outage traces back to a physical cooling-system failure at a PhoenixNAP data center. Namecheap's own website returned a 503 "under maintenance" page while I was trying to figure out what happened. This was not a configuration mistake. It was a building getting too hot.
@@ -28,11 +44,9 @@ Do that wrong and you lose mail in the gap between old and new. That gap is what
 
 Switchboard exists to remove the scary part. It is dry-run first. The source mailbox is read-only, always. DNS changes are printed for review before anything is applied. Sync is idempotent, so running it twice is safe, which is exactly how the final delta sync works.
 
-The interesting part is what I learned while building it.
-
 ## Most Email Providers Cannot Be Automated
 
-I added an automation field to the provider catalog, because the question of "can an agent set this up" turned out to matter more than price.
+The interesting part is what I learned while building it. I added an automation field to the provider catalog, because the question of "can an agent set this up" turned out to matter more than price.
 
 The answer surprised me. At the budget tier, almost nobody exposes an API for provisioning. You click through an admin console. Google Workspace and Microsoft 365 have full APIs, but that is enterprise pricing.
 
@@ -40,27 +54,9 @@ The one exception is Migadu. Migadu has a clean REST API for creating domains an
 
 That made Migadu the reference implementation for switchboard's automated path. Not because it is the best provider, but because it is the only one that let me prove the thesis.
 
-## Why Zoho Is the Pick for a Real Business
+## Picking a Destination
 
-The recommendation that stuck with me came from [@AdamSzaloczi on X](https://x.com/AdamSzaloczi), who pointed me toward Zoho Mail. He was right.
-
-Zoho is the rare case where the budget option is also the reliable option:
-
-- A contractual 99.9% uptime SLA, which almost nobody at this price offers.
-- Enterprise sending infrastructure, so client email actually reaches inboxes.
-- A free tier for up to five users, so you can test with your real addresses before paying anything.
-- Roughly a dollar per user per month after that.
-
-For a business sending quotes and enrollment documents, deliverability is the number that matters, and Zoho scores at the top of the budget tier. Fastmail is arguably better but costs more. MXroute has excellent deliverability with zero hand-holding. Migadu is the cheapest flat-price option and the only one you can script.
-
-The table that matters:
-
-| If you optimize for | Pick |
-|---|---|
-| Reliability for the price | Zoho Mail |
-| Full API automation | Migadu |
-| Flat price, technical users | MXroute |
-| Reliability, price no object | Fastmail |
+A shout-out to [@AdamSzaloczi on X](https://x.com/AdamSzaloczi), who pointed me toward Zoho Mail. The short version: for a business that sends real email, Zoho is a solid budget option, Migadu is the one you can script, and Fastmail is the upgrade if price stops mattering. Pick whichever fits. The tool supports all three.
 
 ## The Bigger Lesson
 
