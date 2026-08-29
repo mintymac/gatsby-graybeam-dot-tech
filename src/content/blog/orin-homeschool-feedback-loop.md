@@ -64,6 +64,14 @@ The two-model pass matters. A single vision model flagged "phone visible" 23 tim
 
 The worksheet transcription is the sleeper feature. Handwriting off a 720p camera, upscaled and read by a vision model, then checked by ordinary code that verifies the math — that is where the diagnostic gold lives. A parent can see which specific problem types broke which specific kid.
 
+## The part I almost forgot to mention: the AI colleague
+
+Here is the part that surprises people most. The cameras, the models, the pipeline — none of it runs itself. The analysis I described above was done **with an AI agent**: a Hermes agent running on my home GPU fleet, powered by **DeepSeek V4 Flash served locally**, alongside the local Gemma vision model and cloud Gemini when a second opinion is warranted.
+
+I do not mean I click a button and read a report. I mean we work the case together. The agent extracts the frames, runs the motion analysis, and reads the worksheets — then we argue about what it means. It flagged 23 possible phone sightings; I looked at the frames and called them false positives. It transcribed "I forgot how to factor" off a 720p video; we decided together that a self-reported gap is a different thing than a wrong answer. It drafted the refresher worksheets, the ledger entries, the calendar events; I approved, edited, and printed them. The whole diagnostic-to-drills loop closed in about an hour because one of the parties in the conversation never gets tired of re-watching footage.
+
+That is the actual product. Not cameras, not models — **a colleague who has seen every morning session and never forgets a detail**, running on hardware I own. The homeschool rig is the use case; the pattern is an AI partner with perfect recall of everything that happened in the room, one that helps you teach instead of just automating worksheets.
+
 ## Where we are taking the on-device AI
 
 Right now the Orin handles capture, audio, and scheduling, and a home server handles the heavier vision passes. The roadmap is to collapse the whole loop onto the Orin itself, because the hardware genuinely supports it:
