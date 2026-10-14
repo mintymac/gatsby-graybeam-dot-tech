@@ -7,6 +7,45 @@ date: 2026-10-13
 
 Simon B. Støvring — [@simonbs on X](https://x.com/simonbs), the iOS developer behind Scriptable, Runestone, Jayson, and Data Jar — recently posted the clearest requirements list I have seen for a team coding-agent platform, then sharpened it in follow-up replies. This article is inspired by that thread and answers it directly: here is how we would build it, what to take from OpenClaw and Hermes, where cmux and Tern's Multica fit, and what none of them give you off the shelf.
 
+> **TL;DR** — Don't build an agent and don't make OpenClaw or Hermes the org platform. Self-host [Tern's Multica](https://multica.ai/docs/self-host-quickstart) today as the control plane, run its daemon on every Mac/Linux box so each machine registers its installed `claude`/`codex` CLIs, put each team in its own workspace, and keep credentials with the person who owns the subscription. That gets shared agent work, a usable web UI, native harnesses, and self-hosting working this week. Then add the two pieces Simon's scale actually forces: fleet placement so any eligible Mac takes the next iOS job (Multica binds an agent to a runtime, so you clone the same agent across Mac runtimes now and build a thin pool scheduler only if the pilot hurts), and GitHub-derived project access instead of hand-kept ACLs. Use Hermes on nodes where you want memory/skills/cron, OpenClaw only as a phone/chat steering edge, and cmux/tmux as the raw-terminal escape hatch.
+
+## The Real Way To Accomplish This (Start Here)
+
+This is the recipe, in order. Steps 1–5 are documented Multica setup, not architecture-fiction; steps 6–7 are the fleet discipline that turns "some shared agents" into Simon's platform.
+
+**Step 1 — Self-host the control plane on one boring machine.** Any Docker host works; it runs web, API, and PostgreSQL, and executes no agent code itself.
+
+```bash
+git clone --depth 1 https://github.com/multica-ai/multica.git
+cd multica
+make selfhost          # creates .env + secrets, pulls images, starts Compose
+```
+
+Compose binds ports `3000`/`8080` to loopback. Keep it that way: publish it to your team only behind a reverse proxy with HTTPS, or on your tailnet/VPN — never `0.0.0.0` on the public internet. Configure email-code sign-in (SMTP or Resend) or Google OAuth per Multica's auth setup, and close open signup once your teams exist.
+
+**Step 2 — Prepare every execution machine the same way.** On each Mac mini, Mac Studio, Linux box, or developer laptop that may run work: install Xcode/simulators (Macs), then install and *sign in to* the native harnesses on `PATH` — at minimum `claude` and/or `codex`. Multica drives tools you already installed and authenticated; it ships no model and holds no harness login. Sign in with the subscription of the human (or approved service account) whose runs that machine account may spend.
+
+**Step 3 — Register each machine as a runtime.**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/multica-ai/multica/main/scripts/install.sh | bash
+multica setup self-host   # point it at your self-hosted server
+multica daemon start
+multica daemon status
+```
+
+The daemon detects the CLIs on `PATH` and registers one runtime per computer-plus-tool per workspace (Mac-3 + Claude Code, Mac-3 + Codex, and so on), heartbeats online, claims queued runs, and streams results back. Set the machine-wide ceiling deliberately — `MULTICA_DAEMON_MAX_CONCURRENT_TASKS` — instead of accepting parallel Xcode builds until the Mac swaps itself to death.
+
+**Step 4 — Model teams and projects in the web UI.** Create one workspace per trust boundary (team, not individual), invite people with `owner`/`admin`/`member` roles, create projects, and attach the repos through the GitHub/VCS integration. Create agents in the UI — name, provider/runtime, instructions, skills, concurrency — and scope which members may run each agent. Add projects from the UI as Simon asked; nobody edits node configuration to onboard a repo.
+
+**Step 5 — Make sharing explicit, per person.** A runtime is private by default for the right reason: running there spends that machine *and that account's tool credentials*. The runtime owner makes it public when the machine is a shared runner, which lets teammates route runs to it without anyone handing over tokens. Dedicated fleet Macs should run under a fleet/service account only where the provider's team/API terms permit that use; personal subscriptions stay on that person's binding and machines. This is the line between "bring your own subscription" and pooling somebody's login.
+
+**Step 6 — Defeat idle Macs deliberately.** Be precise about the current shape: a Multica agent runs on a chosen runtime, and queued runs wait for *that* runtime. So the working pattern today is: define the iOS agent once, then create the same agent profile on every eligible Mac runtime and route work across those twins (a squad/front-door issue convention, or simply assigning to whichever twin is idle from the board). Crude, honest, and it keeps hardware busy on day one. If the pilot shows manual twin-routing is the bottleneck, that is the one component worth building yourself: a thin placement service in front of the agent API that picks the twin whose runtime is online, eligible (right Xcode), and least loaded — your 200-line scheduler, instead of a forked platform.
+
+**Step 7 — Add the escape hatches and the optional runtimes.** Install [cmux](https://github.com/manaflow-ai/cmux) on operator Macs (one workspace per live run, `cmux notify` wired to agent hooks) and keep tmux + Tailscale + SSH on every node, preserving Simon's join-from-my-phone workflow exactly. Add Hermes as an extra CLI/profile on nodes where a team wants persistent memory, learned skills, cron, or Kanban fan-out. Add an OpenClaw Gateway per willing team only as a chat/phone front door that calls the same control plane — never as a second source of truth.
+
+Do those seven steps and tests 2, 5, 6, 7, and 9 in the PoC spec below are already within reach. The rest of this article is the *why*: Simon's full requirements, where OpenClaw and Hermes stop, the complete target architecture, a phased plan, and the acceptance tests — including the fleet-wide placement and GitHub-derived ACL that step 6 and your identity setup must grow into at 300 developers.
+
 His wishlist, condensed from the original post and replies:
 
 - Teammates can steer and join the same conversation, see each other's sessions, and pick up one another's work.
@@ -20,19 +59,9 @@ His wishlist, condensed from the original post and replies:
 
 That last point matters. Simon already has the solo version working. In ["Put Your Coding Agents in Your Pocket"](https://simonbs.dev/posts/put-your-coding-agents-in-your-pocket) he describes Tailscale plus tmux plus an SSH client plus push notifications: start an agent on his Mac, walk away, get pinged, rejoin the same raw CLI session from his phone. The team platform he is asking for is that exact feeling — raw native harness, resumable session, reachable from anywhere — multiplied by 300 people, several hundred repos, and a pool of shared Macs. Everything hard in this problem lives in that multiplication.
 
-## The Verdict Up Front
+## Why This Shape
 
-Do not build another agent. Do not pick OpenClaw *or* Hermes as the platform. Neither is a multi-tenant fleet scheduler, and forcing either into that shape is how you end up with a fork you maintain forever.
-
-Build — or adopt — a thin **fleet control plane** and keep the agents boring:
-
-1. **Control plane (the product):** GitHub-derived identity and per-project authorization, a project registry, a capability-based scheduler, a shared-session broker, and an audit log. This is the missing layer in every tool Simon tried.
-2. **Node daemon (one per machine):** registers the machine's capabilities, provisions an isolated workspace, runs the native harness, streams events back. Outbound-only connections, no inbound ports on any Mac.
-3. **Worker runtime (commodity):** the native `codex` and `claude` CLIs first, with [Hermes Agent](https://github.com/NousResearch/hermes-agent) profiles where you want memory, skills, cron, or a Kanban work queue. [OpenClaw](https://docs.openclaw.ai/concepts/architecture) as an optional personal/channel edge — Slack, Telegram, phone nodes steering into the same session — not as the org-wide source of truth.
-4. **Operator surface (commodity):** web UI as source of truth; [cmux](https://github.com/manaflow-ai/cmux) on Macs and tmux on headless boxes as the raw-terminal escape hatch Simon's pocket setup proves developers want.
-5. **Pilot before building:** [Tern's Multica](https://multica.ai) is the closest existing control-plane-shaped tool we found. Run the proof of concept on it first. Build your own control plane only for the gaps the pilot actually exposes.
-
-The rest of this article defends that split, maps every requirement to a component, and ends with a phased build plan and a PoC spec with kill criteria.
+The recipe above is just the layered split made executable: the control plane is the product (identity, project registry, placement, shared sessions, audit), the node daemon and native CLIs are commodities, and [Hermes Agent](https://github.com/NousResearch/hermes-agent), [OpenClaw](https://docs.openclaw.ai/concepts/architecture), cmux, and tmux each slot in at the one layer they are genuinely best at. Forcing any single one of them to be the whole platform is how you end up maintaining a fork forever. The sections that follow defend that split, map every one of Simon's requirements to a component, and end with the phased plan and PoC kill criteria.
 
 ## What OpenClaw and Hermes Actually Are
 
