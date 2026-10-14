@@ -9,6 +9,17 @@ Simon B. Støvring — [@simonbs on X](https://x.com/simonbs), the iOS developer
 
 > **TL;DR** — Don't build an agent and don't make OpenClaw or Hermes the org platform. Self-host [Tern's Multica](https://multica.ai/docs/self-host-quickstart) today as the control plane, run its daemon on every Mac/Linux box so each machine registers its installed `claude`/`codex` CLIs, put each team in its own workspace, and keep credentials with the person who owns the subscription. That gets shared agent work, a usable web UI, native harnesses, and self-hosting working this week. Then add the two pieces Simon's scale actually forces: fleet placement so any eligible Mac takes the next iOS job (Multica binds an agent to a runtime, so you clone the same agent across Mac runtimes now and build a thin pool scheduler only if the pilot hurts), and GitHub-derived project access instead of hand-kept ACLs. Use Hermes on nodes where you want memory/skills/cron, OpenClaw only as a phone/chat steering edge, and cmux/tmux as the raw-terminal escape hatch.
 
+**Jump to a section:**
+
+- [The Real Way To Accomplish This (Start Here)](#the-real-way-to-accomplish-this-start-here) — the seven-step, do-it-this-week recipe: self-host the control plane, register every Mac as a runtime, model teams/projects in the UI, share runtimes per person, defeat idle Macs.
+- [What Simon Asked For](#what-simon-asked-for) — his full wishlist from the post and replies: shared steering, no repo-pinned hardware, BYO subscriptions, native harnesses, GitHub-following access control at 300-developer scale.
+- [Why This Shape](#why-this-shape) — one paragraph on the layered split: control plane as product, agents and terminals as commodities.
+- [What OpenClaw and Hermes Actually Are](#what-openclaw-and-hermes-actually-are) — a gateway vs. a worker, requirement-by-requirement, and the column listing everything a control plane still has to add.
+- [The Architecture We Would Build](#the-architecture-we-would-build) — the target design in six decisions: [shared sessions](#1-sessions-are-shared-objects-not-terminal-tabs), [capability scheduling](#2-schedule-on-capabilities-never-on-repo-assignment), [GitHub authorization](#3-authorization-follows-github-or-it-will-rot), [audited BYO subscriptions](#4-bring-your-own-subscription-means-yours-audited), [native-harness adapters](#5-native-harness-first-pty-as-the-universal-adapter), and [cmux as cockpit, Multica as pilot](#6-cmux-is-the-cockpit-multica-is-the-shape-to-pilot).
+- [Phased Build Plan](#phased-build-plan) — Phase 0 pilot through Phase 3 fleet hardening, each with an exit criterion.
+- [Proof-of-Concept Spec](#proof-of-concept-spec) — the 3-Mac, 10-developer pilot with nine acceptance tests traceable to Simon's thread, plus kill criteria decided in advance.
+- [The Risks Nobody Puts in the Vendor Deck](#the-risks-nobody-puts-in-the-vendor-deck) — provider terms, Xcode churn, confused-deputy agents, and cost attribution.
+
 ## The Real Way To Accomplish This (Start Here)
 
 This is the recipe, in order. Steps 1–5 are documented Multica setup, not architecture-fiction; steps 6–7 are the fleet discipline that turns "some shared agents" into Simon's platform.
@@ -45,6 +56,8 @@ The daemon detects the CLIs on `PATH` and registers one runtime per computer-plu
 **Step 7 — Add the escape hatches and the optional runtimes.** Install [cmux](https://github.com/manaflow-ai/cmux) on operator Macs (one workspace per live run, `cmux notify` wired to agent hooks) and keep tmux + Tailscale + SSH on every node, preserving Simon's join-from-my-phone workflow exactly. Add Hermes as an extra CLI/profile on nodes where a team wants persistent memory, learned skills, cron, or Kanban fan-out. Add an OpenClaw Gateway per willing team only as a chat/phone front door that calls the same control plane — never as a second source of truth.
 
 Do those seven steps and tests 2, 5, 6, 7, and 9 in the PoC spec below are already within reach. The rest of this article is the *why*: Simon's full requirements, where OpenClaw and Hermes stop, the complete target architecture, a phased plan, and the acceptance tests — including the fleet-wide placement and GitHub-derived ACL that step 6 and your identity setup must grow into at 300 developers.
+
+## What Simon Asked For
 
 His wishlist, condensed from the original post and replies:
 
