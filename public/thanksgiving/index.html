@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thanksgiving OR Planner · Graybeam FeastLab</title>
+  <meta name="description" content="Interactive Thanksgiving dinner scheduling planner powered by Google OR-Tools CP-SAT and independent invariant verification." />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <a class="brand-badge" href="https://graybeam.tech" target="_blank" rel="noopener">graybeam.tech</a>
+        <div class="brand-titles">
+          <h1>Thanksgiving OR Planner</h1>
+          <p class="brand-sub">
+            KitchenAid Combo Oven · 25 lb Feast · CP-SAT Solver
+            <span class="sub-sep">·</span>
+            <span id="liveClockLabel" class="live-clock-pill">Live Clock: …</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="topbar-status">
+        <span id="solverBadge" class="pill pill-neutral" title="OR-Tools CP-SAT solver telemetry">Solving…</span>
+        <button id="validatorBadge" class="pill pill-success pill-btn" type="button" title="Inspect independent invariant verification">
+          ✓ Verifying…
+        </button>
+      </div>
+
+      <div class="topbar-actions">
+        <button id="sousChefBtn" class="btn btn-sous-chef" type="button" title="Ask Inkling 2 Mini Sous-Chef (Thinking Machines Tinker API)">
+          <span id="sousChefStatusDot" class="sc-dot sc-dot-pending" aria-hidden="true"></span>
+          <span>✨ Ask Inkling 2 Mini</span>
+        </button>
+        <button id="recipesJumpBtn" class="btn btn-secondary" type="button" title="Jump to Dish Recipes &amp; Shopping/Gear Checklist">📖 Recipes &amp; Gear</button>
+        <button id="shareBtn" class="btn btn-secondary" type="button">🔗 Share Link</button>
+        <button id="printBtn" class="btn btn-secondary" type="button">🖨️ Print Sheet</button>
+        <button id="resetBtn" class="btn btn-ghost" type="button" title="Reset to default 25 lb KitchenAid feast">↺ Reset</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Command Strip: Anchors, Live Clock Floor, Kitchen Controls & Quick-Tune CTA -->
+    <section class="command-strip card">
+      <div class="command-grid">
+        <div class="control-group control-dinner">
+          <label class="control-label" for="dinnerTimeSelect">🍽️ Dinner Ready By</label>
+          <select id="dinnerTimeSelect" class="ctrl-field select-lg" aria-label="Dinner Ready By Time"></select>
+          <div class="quick-chips" id="dinnerQuickChips">
+            <button type="button" class="chip" data-min="2340">3:00 PM</button>
+            <button type="button" class="chip" data-min="2400">4:00 PM</button>
+            <button type="button" class="chip" data-min="2460">5:00 PM</button>
+            <button type="button" class="chip" data-min="2520">6:00 PM</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label" for="startFromSelect">⏱️ Start Cooking From</label>
+          <select id="startFromSelect" class="ctrl-field select-md" aria-label="Earliest Start Time (No Time Travel)"></select>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label" for="dessertOffsetSelect">🥧 Dessert Served</label>
+          <select id="dessertOffsetSelect" class="ctrl-field select-md">
+            <option value="45">+45 min after dinner</option>
+            <option value="60" selected>+60 min after dinner</option>
+            <option value="75">+75 min after dinner</option>
+            <option value="90">+90 min after dinner</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <span class="control-label">✨ KitchenAid Upper Unit</span>
+          <button id="upperConvectToggle" type="button" class="ctrl-field toggle-pill active" aria-pressed="true">
+            <span class="toggle-dot"></span>
+            <span id="upperConvectLabel">Convect + Air Fry ON</span>
+          </button>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label" for="cookCountSelect">👩‍🍳 Active Cooks</label>
+          <select id="cookCountSelect" class="ctrl-field select-md">
+            <option value="1">1 Solo Chef</option>
+            <option value="2" selected>2 Cooks</option>
+            <option value="3">3+ Helpers</option>
+          </select>
+        </div>
+
+        <div class="control-group control-tune">
+          <span class="control-label">⚙️ All Dishes</span>
+          <button id="tuneFeastBtn" type="button" class="ctrl-field btn btn-primary btn-tune-feast">
+            🎯 Tune My Feast
+          </button>
+        </div>
+      </div>
+
+      <!-- Live KitchenAid Probe & What-If Crisis Bar -->
+      <div class="crisis-bar">
+        <div class="crisis-label">
+          <span class="probe-dot"></span>
+          <strong>Live KitchenAid Probe &amp; What-Ifs:</strong>
+          <span id="turkeyProbeSummary" class="muted">25 lb Convect Roast · 325°F · Pull 158°F → 165°F</span>
+        </div>
+        <div class="crisis-actions">
+          <button id="scenarioFastBtn" class="btn btn-chip" type="button" title="Lock turkey start, shorten cook by 20m, run minimal-disruption CP-SAT repair">
+            ⚡ Turkey 20m Fast!
+          </button>
+          <button id="scenarioSlowBtn" class="btn btn-chip" type="button" title="Lock turkey start, extend cook by 20m, run minimal-disruption CP-SAT repair">
+            🐢 Turkey 20m Slow!
+          </button>
+          <button id="scenarioSpatchcockBtn" class="btn btn-chip" type="button" title="Switch 25 lb turkey to Kenji 450°F Spatchcock method">
+            🍗 Try Kenji Spatchcock (450°F)
+          </button>
+          <button id="scenarioDayOfPiesBtn" class="btn btn-chip" type="button" title="Pin both pies to Thanksgiving Day and test feasibility">
+            🥧 Day-Of Pies Challenge
+          </button>
+          <button id="clearLocksBtn" class="btn btn-chip btn-chip-subtle hidden" type="button">
+            🔓 Unlock All
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Infeasibility / Repair Banner -->
+    <section id="alertBanner" class="alert-banner hidden" role="alert"></section>
+
+    <!-- PRIMARY HERO SECTION: What To Do When — Step-by-Step Kitchen Timeline -->
+    <section id="whatToDoSection" class="hero-timeline card">
+      <div class="section-header hero-header">
+        <div>
+          <div class="hero-title-row">
+            <h2>What To Do When — Step-by-Step Kitchen Timeline</h2>
+            <span id="runsheetCountPill" class="pill pill-neutral pill-compact">0 steps</span>
+          </div>
+          <p class="section-sub" id="runsheetProgress">Exact chronological order — start at Step #1.</p>
+        </div>
+        <div class="hero-controls">
+          <div class="segmented" id="eventFilterTabs" role="tablist">
+            <button type="button" class="seg-btn active" data-filter="all" role="tab">All Steps</button>
+            <button type="button" class="seg-btn" data-filter="oven" role="tab">Oven Queue Only</button>
+            <button type="button" class="seg-btn" data-filter="day_before" role="tab">Tonight</button>
+            <button type="button" class="seg-btn" data-filter="day_of" role="tab">Thanksgiving Day</button>
+          </div>
+          <button id="jumpToGanttBtn" class="btn btn-secondary btn-sm" type="button" title="Scroll to Appliance Swimlane Gantt Chart">
+            📊 Swimlane View ↓
+          </button>
+        </div>
+      </div>
+
+      <!-- Crisp DO THIS NEXT Spotlight Bar -->
+      <div id="nextUpCard" class="next-up-card hidden"></div>
+
+      <!-- Completion Progress Track -->
+      <div class="progress-track">
+        <div id="progressBarFill" class="progress-fill" style="width: 0%"></div>
+      </div>
+
+      <!-- Phase-Grouped Chronological Steps -->
+      <ol id="eventFeed" class="event-feed"></ol>
+    </section>
+
+    <!-- Full-Width Appliance Swimlane Gantt Chart -->
+    <section id="swimlaneSection" class="timeline-card card">
+      <div class="section-header">
+        <div>
+          <h2>Appliance Swimlane Timeline</h2>
+          <p class="section-sub">Parallel view of every oven rack, upper combo air-fryer, burner, and rest window. Click any bar to edit or pin a lock.</p>
+        </div>
+        <div class="timeline-controls">
+          <div class="segmented" id="dayViewTabs" role="tablist">
+            <button type="button" class="seg-btn active" data-view="day_of" role="tab">Thanksgiving Day</button>
+            <button type="button" class="seg-btn" data-view="day_before" role="tab">Day Before</button>
+            <button type="button" class="seg-btn" data-view="both" role="tab">Both Days (48h)</button>
+          </div>
+          <button id="toggleGanttBtn" class="btn btn-ghost btn-sm" type="button" aria-expanded="true">Collapse ▲</button>
+        </div>
+      </div>
+
+      <div id="ganttCollapsible">
+        <div class="timeline-legend">
+          <span class="legend-item"><i class="swatch swatch-oven"></i>Main Oven</span>
+          <span class="legend-item"><i class="swatch swatch-upper"></i>Upper Combo / Air Fry</span>
+          <span class="legend-item"><i class="swatch swatch-stove"></i>Stovetop</span>
+          <span class="legend-item"><i class="swatch swatch-prep"></i>Prep / Rest / Chill</span>
+          <span class="legend-item"><i class="swatch swatch-rest-band"></i>Golden Turkey Rest Window</span>
+          <span class="legend-item"><i class="swatch swatch-now"></i>Start Now Floor</span>
+          <span class="legend-item"><i class="swatch swatch-dinner"></i>Dinner Ready-By</span>
+        </div>
+
+        <div id="ganttContainer" class="gantt-container"></div>
+      </div>
+    </section>
+
+    <!-- Menu & Dish Controls Grid -->
+    <section id="menuSection" class="card menu-panel">
+      <div class="section-header">
+        <div>
+          <h2>Menu &amp; Dish Controls</h2>
+          <p class="section-sub">Click any dish to adjust temperatures, cook durations, roasting method, or pin a hard lock.</p>
+        </div>
+        <div class="menu-header-actions">
+          <button id="openTuneFromMenuBtn" class="btn btn-secondary btn-sm" type="button">🎯 Tune All Dishes</button>
+          <div class="add-dish-wrap">
+            <button id="addDishBtn" class="btn btn-primary btn-sm" type="button">+ Add Dish</button>
+            <div id="addDishMenu" class="dropdown-menu hidden"></div>
+          </div>
+        </div>
+      </div>
+      <div id="dishList" class="dish-list"></div>
+    </section>
+
+    <!-- Full-Width Recipes & Things You Might Need Section -->
+    <section id="recipesSection" class="card recipes-panel">
+      <div class="section-header recipes-header">
+        <div>
+          <div class="recipes-title-row">
+            <h2>📖 Recipes &amp; Things You Might Need</h2>
+            <span id="recipesCountPill" class="pill pill-neutral pill-compact">0 dishes</span>
+            <span id="gearProgressPill" class="pill pill-success pill-compact">0 of 0 checked</span>
+          </div>
+          <p class="section-sub" id="recipesSubtitle">
+            Full recipes, shopping ingredients, and deduplicated kitchen gear synced live to your enabled menu.
+          </p>
+        </div>
+        <div class="recipes-controls">
+          <div class="segmented recipes-tabs" id="recipesSectionTabs" role="tablist" aria-label="Recipes and Gear views">
+            <button type="button" class="seg-btn active" data-tab="recipes" role="tab" aria-selected="true">📖 Dish Recipes</button>
+            <button type="button" class="seg-btn" data-tab="gear" role="tab" aria-selected="false">🛒 Things You Might Need</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 1: Dish Recipes -->
+      <div id="recipesTabPanel" class="recipes-tab-panel" role="tabpanel">
+        <div id="recipeCardsGrid" class="recipe-grid"></div>
+      </div>
+
+      <!-- Tab 2: Things You Might Need (Shopping + Equipment & Host Essentials) -->
+      <div id="gearTabPanel" class="gear-tab-panel hidden" role="tabpanel">
+        <div class="gear-progress-bar-row">
+          <div class="gear-progress-meta">
+            <strong id="gearProgressLabel">0 of 0 checked</strong>
+            <span class="muted small">Auto-generated from enabled dishes · check-offs saved in this browser</span>
+          </div>
+          <button id="resetGearChecksBtn" class="btn btn-ghost btn-sm gear-reset-btn" type="button">↺ Clear Checklist</button>
+        </div>
+        <div class="progress-track gear-progress-track">
+          <div id="gearProgressFill" class="progress-fill" style="width: 0%"></div>
+        </div>
+
+        <div class="gear-columns">
+          <div class="gear-column">
+            <div class="gear-col-header">
+              <div>
+                <h3>🛒 Shopping &amp; Pantry Ingredients</h3>
+                <p class="muted small">Grouped by enabled dish — toggle dishes above to update live.</p>
+              </div>
+              <span id="shoppingCountBadge" class="pill pill-neutral pill-compact">0 / 0</span>
+            </div>
+            <div id="shoppingChecklist" class="checklist-groups"></div>
+          </div>
+
+          <div class="gear-column">
+            <div class="gear-col-header">
+              <div>
+                <h3>🔧 Equipment &amp; Host Essentials</h3>
+                <p class="muted small">Deduplicated across enabled dishes plus universal host prep essentials.</p>
+              </div>
+              <span id="equipmentCountBadge" class="pill pill-neutral pill-compact">0 / 0</span>
+            </div>
+            <div id="equipmentChecklist" class="checklist-groups"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>Built with Google OR-Tools CP-SAT + Independent Invariant Verification · Powered by <a href="https://graybeam.tech" target="_blank" rel="noopener">graybeam.tech</a></span>
+  </footer>
+
+  <!-- Slide-Over Dish Editor Drawer -->
+  <div id="drawerBackdrop" class="backdrop hidden"></div>
+  <aside id="dishDrawer" class="drawer hidden" aria-label="Edit Dish Settings">
+    <div class="drawer-header">
+      <div class="drawer-title-wrap">
+        <span id="drawerEmoji" class="drawer-emoji">🦃</span>
+        <div>
+          <h3 id="drawerTitle">Dish</h3>
+          <span id="drawerMeta" class="muted small"></span>
+        </div>
+      </div>
+      <button id="closeDrawerBtn" class="icon-btn" type="button" aria-label="Close">✕</button>
+    </div>
+    <div id="drawerBody" class="drawer-body"></div>
+    <div class="drawer-footer">
+      <button id="drawerDeleteBtn" class="btn btn-danger-ghost hidden" type="button">Remove Dish</button>
+      <div class="drawer-footer-right">
+        <button id="drawerRepairBtn" class="btn btn-secondary" type="button" title="Apply and re-solve with minimal disruption to other dishes">Minimal Repair</button>
+        <button id="drawerApplyBtn" class="btn btn-primary" type="button">Apply &amp; Solve</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Tune My Feast (All Dishes) Quick-Alignment Modal -->
+  <div id="tuneFeastModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="tuneFeastTitle">
+    <div class="modal-card modal-card-wide">
+      <div class="modal-header">
+        <div>
+          <h3 id="tuneFeastTitle">🎯 Tune My Feast — Verify &amp; Align All Dishes</h3>
+          <p class="muted small">Check your real-world oven temps, cook times, appliances, and tonight vs. Thanksgiving Day preferences in one pass.</p>
+        </div>
+        <button id="closeTuneFeastBtn" class="icon-btn" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="tune-table-wrap">
+        <table class="tune-table">
+          <thead>
+            <tr>
+              <th class="col-on">On</th>
+              <th class="col-dish">Dish</th>
+              <th class="col-app">Appliance</th>
+              <th class="col-temp">Temp °F</th>
+              <th class="col-min">Cook Min</th>
+              <th class="col-day">Day Pref</th>
+              <th class="col-strat">Method / Strategy</th>
+            </tr>
+          </thead>
+          <tbody id="tuneFeastBody"></tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <span id="tuneFeastSummary" class="muted small">8 of 8 dishes active</span>
+        <div class="modal-footer-actions">
+          <button id="cancelTuneFeastBtn" class="btn btn-secondary" type="button">Cancel</button>
+          <button id="applyTuneFeastBtn" class="btn btn-primary" type="button">⚡ Solve My Tuned Feast</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Independent Validator Modal -->
+  <div id="validatorModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="validatorModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h3 id="validatorModalTitle">Independent Invariant Verification</h3>
+          <p class="muted small">Zero-OR-Tools verifier checks all 8 hard kitchen constraints independently.</p>
+        </div>
+        <button id="closeValidatorBtn" class="icon-btn" type="button" aria-label="Close">✕</button>
+      </div>
+      <div id="validatorChecksList" class="validator-list"></div>
+    </div>
+  </div>
+
+  <!-- Slide-Over Inkling 2 Mini Sous-Chef Panel -->
+  <aside id="sousChefDrawer" class="drawer sous-chef-drawer hidden" aria-label="Inkling 2 Mini Sous-Chef">
+    <div class="drawer-header sc-header">
+      <div class="drawer-title-wrap">
+        <span class="sc-avatar" aria-hidden="true">✨</span>
+        <div class="sc-title-block">
+          <h3>Inkling 2 Mini Sous-Chef</h3>
+          <span class="muted small">Thinking Machines · Tinker API</span>
+        </div>
+      </div>
+      <div class="sc-header-actions">
+        <button id="sousChefConnPill" class="pill pill-neutral pill-compact pill-btn" type="button" title="Tinker API connection status — click for settings">
+          ⏳ Checking…
+        </button>
+        <button id="sousChefSettingsBtn" class="icon-btn" type="button" aria-label="Tinker API Settings" aria-expanded="false" title="Tinker Settings">⚙</button>
+        <button id="closeSousChefBtn" class="icon-btn" type="button" aria-label="Close Sous-Chef">✕</button>
+      </div>
+    </div>
+
+    <!-- Collapsible Tinker Settings Panel -->
+    <div id="sousChefSettingsPanel" class="sc-settings hidden">
+      <div class="sc-settings-head">
+        <strong>Tinker API Configuration</strong>
+        <a href="https://tinker-console.thinkingmachines.ai/keys" target="_blank" rel="noopener" class="sc-console-link">Get Tinker Key ↗</a>
+      </div>
+      <div id="sousChefModeBanner" class="sc-mode-banner hidden"></div>
+      <div id="sousChefPinRow" class="form-row hidden">
+        <label for="sousChefPinInput">
+          <span>🔐 Host Access PIN <span class="muted">(or use your own Tinker key below)</span></span>
+        </label>
+        <div class="sc-key-row">
+          <input id="sousChefPinInput" type="password" class="input-field" placeholder="Enter host PIN (sessionStorage only)" autocomplete="off" spellcheck="false" />
+          <button id="sousChefSavePinBtn" class="btn btn-primary btn-sm" type="button">Unlock</button>
+          <button id="sousChefClearPinBtn" class="btn btn-ghost btn-sm" type="button" title="Clear session PIN">Clear</button>
+        </div>
+        <div id="sousChefPinHint" class="sc-key-hint muted small">
+          Kept only in this browser tab's sessionStorage and sent via X-Sous-Chef-Pin — never saved to localStorage or #plan= links.
+        </div>
+      </div>
+      <div class="form-row">
+        <label for="sousChefModelSelect">Model</label>
+        <select id="sousChefModelSelect" class="input-field">
+          <option value="thinkingmachines/Inkling-2-Mini">thinkingmachines/Inkling-2-Mini (Default)</option>
+          <option value="thinkingmachines/Inkling-2-Mini:peft:65536:free">thinkingmachines/Inkling-2-Mini:peft:65536:free (Free Tier)</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="sousChefApiKeyInput">
+          <span id="sousChefApiKeyLabel">Session TINKER_API_KEY <span class="muted">(optional if set in .env)</span></span>
+        </label>
+        <div class="sc-key-row">
+          <input id="sousChefApiKeyInput" type="password" class="input-field" placeholder="tml-… (stored in sessionStorage only)" autocomplete="off" spellcheck="false" />
+          <button id="sousChefSaveKeyBtn" class="btn btn-primary btn-sm" type="button">Save</button>
+          <button id="sousChefClearKeyBtn" class="btn btn-ghost btn-sm" type="button" title="Clear session key">Clear</button>
+        </div>
+        <div id="sousChefKeyHint" class="sc-key-hint muted small">
+          Kept only in this browser tab's sessionStorage — never saved to localStorage or #plan= share links.
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick-Ask Starter Chips -->
+    <div class="sc-starters-bar">
+      <div class="sc-starters-top">
+        <span class="sc-starters-label">Quick Ask</span>
+        <button id="sousChefClearChatBtn" class="sc-clear-chat-btn hidden" type="button" title="Clear conversation">↺ New Chat</button>
+      </div>
+      <div id="sousChefStarterChips" class="sc-starter-chips">
+        <button type="button" class="chip sc-starter-chip" data-prompt="Check my gravy & drippings timing against my turkey rest window and dinner time.">🥣 Check my gravy &amp; drippings timing</button>
+        <button type="button" class="chip sc-starter-chip" data-prompt="Audit my 25 lb turkey prep tonight — what should I do right now vs Thanksgiving morning?">🦃 Audit my 25 lb turkey prep tonight</button>
+        <button type="button" class="chip sc-starter-chip" data-prompt="Give me tips for NYT Banana Cardamom Bread Pudding timing, overnight soak, and serving warm for dessert.">🍌 NYT Banana Cardamom Bread Pudding tips</button>
+        <button type="button" class="chip sc-starter-chip" data-prompt="Review my full Thanksgiving menu and schedule: what am I forgetting or risking as a bottleneck?">🔍 What am I forgetting for Thanksgiving?</button>
+      </div>
+    </div>
+
+    <!-- Chat Thread -->
+    <div id="sousChefMessages" class="sc-messages" aria-live="polite"></div>
+
+    <!-- Multimodal Composer -->
+    <div class="sc-composer">
+      <div id="sousChefImagePreview" class="sc-img-preview hidden">
+        <img id="sousChefImageThumb" class="sc-img-thumb" alt="Attached photo preview" />
+        <span id="sousChefImageMeta" class="sc-img-meta small">Photo attached</span>
+        <button id="sousChefRemoveImageBtn" class="sc-img-remove" type="button" aria-label="Remove attached photo">✕</button>
+      </div>
+      <div class="sc-composer-row">
+        <input id="sousChefPhotoInput" type="file" accept="image/*" capture="environment" class="hidden" />
+        <button id="sousChefPhotoBtn" class="btn btn-secondary sc-photo-btn" type="button" title="Attach a photo of your turkey, oven racks, or recipe">📷</button>
+        <textarea id="sousChefInput" class="sc-textarea" rows="1" placeholder="Ask about timing, temps, swaps, or snap a photo…"></textarea>
+        <button id="sousChefSendBtn" class="btn btn-primary sc-send-btn" type="button">Send</button>
+      </div>
+      <div class="sc-composer-foot muted small">
+        <span>Enter to send · Shift+Enter for newline · Live CP-SAT plan attached automatically</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Floating Sous-Chef Entry Point -->
+  <button id="sousChefFab" class="sous-chef-fab" type="button" aria-label="Open Inkling 2 Mini Sous-Chef">
+    <span id="sousChefFabDot" class="sc-dot sc-dot-pending" aria-hidden="true"></span>
+    <span>✨ Inkling 2 Mini</span>
+  </button>
+
+  <!-- Floating Tooltip -->
+  <div id="ganttTooltip" class="tooltip hidden"></div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
