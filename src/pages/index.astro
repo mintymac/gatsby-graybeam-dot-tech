@@ -32,6 +32,14 @@ const focusAreas = [
 
 const projects = [
   {
+    name: "Thanksgiving OR Planner",
+    subtitle: "graybeam.tech/thanksgiving",
+    desc: "Constraint-solved Thanksgiving dinner scheduler with live oven swimlanes, scalable turkey & recipe sizing, 8/8 invariant verification, and a live Inkling 2 Mini Sous-Chef.",
+    image: "/images/project-thanksgiving-or-planner.svg",
+    link: "/thanksgiving/",
+    linkText: "Launch planner",
+  },
+  {
     name: "Dalton Chair",
     subtitle: "Verifiable web application integrity",
     desc: "A signed-manifest protocol that lets independent auditors prove a live web app is serving the JavaScript its developer signed.",
@@ -90,6 +98,14 @@ const blogImages: Record<string, string> = {
     <div class="relative max-w-5xl mx-auto px-4 sm:px-6 flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
       <!-- Text -->
       <div class="flex-1 text-center lg:text-left" data-reveal>
+        <a
+          href="/thanksgiving/"
+          class="inline-flex items-center gap-2 px-3.5 py-1.5 mb-6 rounded-full bg-[#161522] border border-[#7c3cb7]/45 text-xs sm:text-sm font-medium text-[#d8c4f4] hover:border-[#9b5ac7] hover:text-white transition-colors"
+        >
+          <span class="inline-block w-2 h-2 rounded-full bg-[#3e8e62]"></span>
+          <span>Live Tool · Thanksgiving OR Planner + Inkling 2 Mini</span>
+          <span aria-hidden="true">→</span>
+        </a>
         <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
           Gray Beam<br />Technology
         </h1>
@@ -137,7 +153,7 @@ const blogImages: Record<string, string> = {
         Products born from research
       </p>
 
-      <div class="grid sm:grid-cols-2 gap-6" data-reveal>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6" data-reveal>
         {projects.map((project) => (
           <a
             href={project.link}

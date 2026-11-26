@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" fill="none">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#7c3cb7" stop-opacity="0.28" />
+      <stop offset="60%" stop-color="#ba0c2f" stop-opacity="0.10" />
+      <stop offset="100%" stop-color="#0a0a0c" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="ovenBar" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ba0c2f" />
+      <stop offset="100%" stop-color="#d95b26" />
+    </linearGradient>
+    <linearGradient id="upperBar" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7c3cb7" />
+      <stop offset="100%" stop-color="#9b5ac7" />
+    </linearGradient>
+    <linearGradient id="stoveBar" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2b6e49" />
+      <stop offset="100%" stop-color="#3e8e62" />
+    </linearGradient>
+    <pattern id="restHatch" width="10" height="10" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="0" y2="10" stroke="#e5a93b" stroke-width="2" stroke-opacity="0.35" />
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="450" fill="#0a0a0c" />
+  <rect width="800" height="450" fill="url(#glow)" />
+
+  <!-- Subtle Grid -->
+  <g stroke="#ffffff" stroke-opacity="0.05" stroke-width="1">
+    <line x1="160" y1="78" x2="160" y2="380" />
+    <line x1="280" y1="78" x2="280" y2="380" />
+    <line x1="400" y1="78" x2="400" y2="380" />
+    <line x1="520" y1="78" x2="520" y2="380" />
+    <line x1="640" y1="78" x2="640" y2="380" />
+    <line x1="60" y1="154" x2="740" y2="154" />
+    <line x1="60" y1="228" x2="740" y2="228" />
+    <line x1="60" y1="302" x2="740" y2="302" />
+  </g>
+
+  <!-- Top Telemetry Bar -->
+  <rect x="60" y="34" width="680" height="36" rx="8" fill="#141419" stroke="#262633" />
+  <circle cx="80" cy="52" r="4.5" fill="#3e8e62" />
+  <text x="94" y="56" fill="#d8d8e2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" font-weight="600">OR CONSTRAINT SOLVER · 8/8 INVARIANTS VERIFIED</text>
+  <rect x="556" y="42" width="170" height="20" rx="10" fill="#231a30" stroke="#7c3cb7" stroke-opacity="0.6" />
+  <text x="641" y="56" text-anchor="middle" fill="#c79cf0" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10.5" font-weight="600">INKLING 2 MINI LIVE</text>
+
+  <!-- Swimlane Frame -->
+  <rect x="60" y="84" width="680" height="296" rx="12" fill="#111116" fill-opacity="0.88" stroke="#242433" />
+
+  <!-- Lane Labels -->
+  <g fill="#9a9aa8" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" font-weight="600">
+    <text x="80" y="124">MAIN OVEN</text>
+    <text x="80" y="198">UPPER COMBO</text>
+    <text x="80" y="272">STOVETOP</text>
+    <text x="80" y="346">REST &amp; PREP</text>
+  </g>
+
+  <!-- Golden Turkey Rest Window Highlight -->
+  <rect x="460" y="92" width="132" height="280" fill="url(#restHatch)" />
+  <rect x="460" y="92" width="132" height="280" fill="#e5a93b" fill-opacity="0.06" stroke="#e5a93b" stroke-opacity="0.4" stroke-dasharray="4 4" />
+  <text x="526" y="106" text-anchor="middle" fill="#f3c567" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="9.5" font-weight="700">GOLDEN REST WINDOW</text>
+
+  <!-- Main Oven Bars -->
+  <rect x="195" y="114" width="262" height="32" rx="7" fill="url(#ovenBar)" />
+  <text x="210" y="134" fill="#ffffff" font-family="Inter, system-ui, sans-serif" font-size="12" font-weight="700">25 lb Turkey · Convect Roast</text>
+  <rect x="405" y="121" width="44" height="18" rx="9" fill="#000000" fill-opacity="0.28" />
+  <text x="427" y="134" text-anchor="middle" fill="#ffffff" font-family="ui-monospace, monospace" font-size="10" font-weight="700">325°F</text>
+
+  <rect x="492" y="114" width="88" height="32" rx="7" fill="url(#ovenBar)" />
+  <text x="502" y="134" fill="#ffffff" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="700">Mac &amp; Ch.</text>
+
+  <rect x="602" y="114" width="114" height="32" rx="7" fill="#9c2c1b" stroke="#e0704c" stroke-opacity="0.5" />
+  <text x="612" y="134" fill="#ffffff" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="700">Bread Pudding</text>
+
+  <!-- Upper Combo Bar -->
+  <rect x="530" y="186" width="66" height="30" rx="7" fill="url(#upperBar)" />
+  <text x="539" y="205" fill="#ffffff" font-family="Inter, system-ui, sans-serif" font-size="10.5" font-weight="700">Air Fry</text>
+
+  <!-- Stovetop Bars -->
+  <rect x="475" y="254" width="82" height="22" rx="6" fill="url(#stoveBar)" />
+  <text x="484" y="269" fill="#ffffff" font-family="Inter, system-ui, sans-serif" font-size="10" font-weight="600">Mashed Pot.</text>
+
+  <rect x="506" y="280" width="90" height="22" rx="6" fill="url(#stoveBar)" />
+  <text x="514" y="295" fill="#ffffff" font-family="Inter, system-ui, sans-serif" font-size="10" font-weight="600">Dressing &amp; Gravy</text>
+
+  <!-- Rest & Prep Bars -->
+  <rect x="462" y="332" width="114" height="28" rx="7" fill="#24201a" stroke="#e5a93b" stroke-dasharray="4 3" />
+  <text x="474" y="350" fill="#f3c567" font-family="Inter, system-ui, sans-serif" font-size="11" font-weight="600">Rest + Carve Turkey</text>
+
+  <!-- Dinner Ready-By Anchor Line -->
+  <line x1="598" y1="84" x2="598" y2="380" stroke="#ff385c" stroke-width="2.5" />
+  <rect x="546" y="388" width="104" height="24" rx="12" fill="#ba0c2f" />
+  <text x="598" y="404" text-anchor="middle" fill="#ffffff" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10.5" font-weight="700">DINNER 4:00 PM</text>
+
+  <!-- Dessert Anchor Line -->
+  <line x1="718" y1="84" x2="718" y2="380" stroke="#e5a93b" stroke-width="2" stroke-dasharray="5 3" />
+  <text x="718" y="404" text-anchor="middle" fill="#f3c567" font-family="ui-monospace, monospace" font-size="10" font-weight="700">DESSERT</text>
+</svg>
