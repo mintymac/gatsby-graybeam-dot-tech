@@ -14,6 +14,8 @@
       "stovetop_burners": 4,
       "cook_count": 2,
       "enforce_chef_hands": true,
+      "guest_count": 16,
+      "recipe_scale": 1.0,
       "dessert_ready_min": 2460
     },
     "dishes": [
@@ -305,7 +307,7 @@
   },
   "plan": {
     "status": "optimal",
-    "solve_ms": 25.19,
+    "solve_ms": 25.42,
     "objective_value": 2177,
     "tasks": [
       {

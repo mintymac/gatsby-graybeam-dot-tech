@@ -64,18 +64,32 @@ export function ovenTransitionBuffer(tempA, tempB, _toleranceF = 25) {
   return Math.abs(diff) <= 75 ? 15 : 20; // Cooling down
 }
 
+export function turkeyRecommendedRestMin(weightLb = 25.0, method = "convection_roast") {
+  const w = Number.isFinite(Number(weightLb)) ? Number(weightLb) : 25.0;
+  const isSpatchcock = method === "spatchcock";
+  if (w <= 14) return isSpatchcock ? 30 : 35;
+  if (w <= 20) return isSpatchcock ? 40 : 45;
+  return isSpatchcock ? 45 : 55;
+}
+
 export function turkeyRecommendationBrowser(weightLb = 25.0, method = "convection_roast") {
   const safeMethod = TURKEY_METHOD_DEFAULTS[method] ? method : "convection_roast";
   const cfg = TURKEY_METHOD_DEFAULTS[safeMethod];
   const w = Number.isFinite(Number(weightLb)) ? Number(weightLb) : 25.0;
   const raw = w * cfg.min_per_lb;
   const cookMin = Math.max(60, Math.round(raw / 5.0) * 5);
+  const restMin = turkeyRecommendedRestMin(w, safeMethod);
+  const kosherSaltTbsp = Math.round((w / 4.0) * 4) / 4;
+  const minGuests = Math.max(4, Math.round(w / 1.5));
+  const maxGuests = Math.max(minGuests + 2, Math.round(w / 1.15));
   return {
     weight_lb: w,
     method: safeMethod,
     temp_f: cfg.temp_f,
     cook_min: cookMin,
-    rest_min: cfg.rest_min,
+    rest_min: restMin,
+    kosher_salt_tbsp: kosherSaltTbsp,
+    suggested_guests: `${minGuests}–${maxGuests}`,
     note: cfg.note,
   };
 }
@@ -127,6 +141,12 @@ function normalizeKitchen(rawKitchen = {}) {
       : 2,
     enforce_chef_hands:
       rawKitchen.enforce_chef_hands === undefined ? true : Boolean(rawKitchen.enforce_chef_hands),
+    guest_count: Number.isFinite(Number(rawKitchen.guest_count))
+      ? Math.max(2, Math.min(40, Math.round(Number(rawKitchen.guest_count))))
+      : 16,
+    recipe_scale: Number.isFinite(Number(rawKitchen.recipe_scale))
+      ? Math.max(0.25, Math.min(3.0, Number(rawKitchen.recipe_scale)))
+      : 1.0,
   };
 }
 

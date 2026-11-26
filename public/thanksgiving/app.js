@@ -6,6 +6,7 @@ const DAY_MINUTES = 1440;
 const STORAGE_KEY = "graybeam_thanksgiving_or_state_v2";
 const CHECKED_KEY = "graybeam_thanksgiving_or_checked_v2";
 const ITEMS_CHECKED_KEY = "graybeam_thanksgiving_or_items_v1";
+const RECIPE_OVERRIDES_KEY = "graybeam_thanksgiving_or_recipes_v1";
 const TINKER_SESSION_KEY = "graybeam_tinker_session_key";
 const TINKER_PIN_SESSION_KEY = "graybeam_tinker_session_pin";
 const TINKER_MODEL_SESSION_KEY = "graybeam_tinker_model";
@@ -53,6 +54,7 @@ const state = {
   quickAddTemplates: {},
   turkeyMethods: {},
   recipes: {},
+  recipeOverrides: {},
   hostEssentials: [],
   recipesTab: "recipes", // "recipes" | "gear"
   dayView: "day_of", // "day_of" | "day_before" | "both"
@@ -61,6 +63,7 @@ const state = {
   checkedEvents: new Set(),
   checkedItems: new Set(),
   editingDishId: null,
+  editingRecipeDishId: null,
   sousChef: {
     open: false,
     settingsOpen: false,
@@ -164,7 +167,11 @@ function escapeHtml(str) {
 // Persistence & Shareable URL Hash (#plan=...)
 // ---------------------------------------------------------------------------
 function encodePlanHash(req) {
-  const json = JSON.stringify({ kitchen: req.kitchen, dishes: req.dishes });
+  const payload = { kitchen: req.kitchen, dishes: req.dishes };
+  if (state.recipeOverrides && Object.keys(state.recipeOverrides).length > 0) {
+    payload.recipeOverrides = state.recipeOverrides;
+  }
+  const json = JSON.stringify(payload);
   const bytes = new TextEncoder().encode(json);
   let bin = "";
   bytes.forEach((b) => (bin += String.fromCharCode(b)));
@@ -229,6 +236,34 @@ function saveCheckedItems() {
     localStorage.setItem(ITEMS_CHECKED_KEY, JSON.stringify([...state.checkedItems]));
   } catch {
     // Ignore
+  }
+}
+
+function loadRecipeOverrides() {
+  try {
+    const raw = localStorage.getItem(RECIPE_OVERRIDES_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        state.recipeOverrides = parsed;
+        return;
+      }
+    }
+  } catch {
+    // Ignore malformed localStorage
+  }
+  state.recipeOverrides = {};
+}
+
+function saveRecipeOverrides() {
+  try {
+    if (!state.recipeOverrides || Object.keys(state.recipeOverrides).length === 0) {
+      localStorage.removeItem(RECIPE_OVERRIDES_KEY);
+    } else {
+      localStorage.setItem(RECIPE_OVERRIDES_KEY, JSON.stringify(state.recipeOverrides));
+    }
+  } catch {
+    // Ignore storage quota errors
   }
 }
 
@@ -377,6 +412,7 @@ async function initApp() {
 
   loadCheckedEvents();
   loadCheckedItems();
+  loadRecipeOverrides();
   initSousChefState();
   populateDinnerTimeOptions();
   populateStartFromOptions();
@@ -406,13 +442,21 @@ async function initApp() {
   if (fromHash) {
     state.request = {
       ...data.request,
-      kitchen: { ...data.request.kitchen, ...fromHash.kitchen },
+      kitchen: { recipe_scale: 1, ...data.request.kitchen, ...fromHash.kitchen },
       dishes: fromHash.dishes,
     };
+    if (
+      fromHash.recipeOverrides &&
+      typeof fromHash.recipeOverrides === "object" &&
+      !Array.isArray(fromHash.recipeOverrides)
+    ) {
+      state.recipeOverrides = { ...fromHash.recipeOverrides };
+      saveRecipeOverrides();
+    }
     showToast("Loaded shared Thanksgiving plan from link!");
     await apiSolve(false);
   } else if (saved && saved.kitchen && Array.isArray(saved.dishes)) {
-    const mergedKitchen = { ...data.request.kitchen, ...saved.kitchen };
+    const mergedKitchen = { recipe_scale: 1, ...data.request.kitchen, ...saved.kitchen };
     // Ensure saved state from before live-clock support does not silently time-travel
     if (mergedKitchen.earliest_start_min === undefined) {
       mergedKitchen.earliest_start_min = liveMin;
@@ -424,6 +468,9 @@ async function initApp() {
     await apiSolve(false);
   } else {
     state.request = data.request;
+    if (state.request.kitchen.recipe_scale === undefined) {
+      state.request.kitchen.recipe_scale = 1;
+    }
     // Anchor to REAL current time so we never travel back in time!
     state.request.kitchen.earliest_start_min = liveMin;
     if (liveMin < DAY_MINUTES) {
@@ -484,6 +531,22 @@ function renderAll() {
   renderRecipesSection();
 }
 
+function formatWeightValue(w) {
+  const n = Number(w);
+  if (!Number.isFinite(n) || n <= 0) return "25";
+  return Number.isInteger(n) ? String(n) : String(Math.round(n * 10) / 10);
+}
+
+function syncTurkeyDishName(dish, weightLb) {
+  if (!dish) return;
+  const wLabel = formatWeightValue(weightLb);
+  if (/^\d+(?:\.\d+)?\s*lb\b/i.test(dish.name || "")) {
+    dish.name = dish.name.replace(/^\d+(?:\.\d+)?\s*lb\b/i, `${wLabel} lb`);
+  } else {
+    dish.name = `${wLabel} lb Roasted Turkey`;
+  }
+}
+
 function renderControls() {
   const k = state.request.kitchen;
   document.getElementById("dinnerTimeSelect").value = String(k.dinner_ready_min);
@@ -519,7 +582,43 @@ function renderControls() {
     : "Microwave Only";
 
   const turkey = state.request.dishes.find((d) => d.id === "turkey");
+  const turkeyWeightSel = document.getElementById("turkeyWeightSelect");
+  const feastWeightLabel = document.getElementById("feastWeightLabel");
   const probeSummary = document.getElementById("turkeyProbeSummary");
+  if (turkey && turkeyWeightSel) {
+    const wVal = formatWeightValue(turkey.turkey_weight_lb || 25);
+    if (![...turkeyWeightSel.options].some((o) => Number(o.value) === Number(wVal))) {
+      const opt = document.createElement("option");
+      opt.value = wVal;
+      opt.textContent = `${wVal} lb (Custom)`;
+      turkeyWeightSel.appendChild(opt);
+    }
+    const matchingOpt = [...turkeyWeightSel.options].find((o) => Number(o.value) === Number(wVal));
+    if (matchingOpt) turkeyWeightSel.value = matchingOpt.value;
+    turkeyWeightSel.disabled = !turkey.enabled;
+  }
+  if (feastWeightLabel) {
+    feastWeightLabel.textContent =
+      turkey && turkey.enabled
+        ? `${formatWeightValue(turkey.turkey_weight_lb || 25)} lb Feast`
+        : "Custom Feast";
+  }
+
+  const scaleSel = document.getElementById("recipeScaleSelect");
+  if (scaleSel) {
+    const scaleVal = safeNum(k.recipe_scale, 1);
+    const matchingScale = [...scaleSel.options].find((o) => Math.abs(Number(o.value) - scaleVal) < 0.001);
+    if (matchingScale) {
+      scaleSel.value = matchingScale.value;
+    } else {
+      const opt = document.createElement("option");
+      opt.value = String(scaleVal);
+      opt.textContent = `${scaleVal}× (Custom)`;
+      scaleSel.appendChild(opt);
+      scaleSel.value = opt.value;
+    }
+  }
+
   if (turkey && turkey.enabled) {
     const methodLabel =
       turkey.turkey_method === "spatchcock"
@@ -527,7 +626,7 @@ function renderControls() {
         : turkey.turkey_method === "standard_roast"
         ? "Standard Roast"
         : "Convect Roast";
-    probeSummary.textContent = `${turkey.turkey_weight_lb || 25} lb ${methodLabel} · ${turkey.temp_f}°F · ${turkey.cook_min}m · Pull ${turkey.probe_pull_f || 158}°F → ${turkey.probe_target_f || 165}°F`;
+    probeSummary.textContent = `${formatWeightValue(turkey.turkey_weight_lb || 25)} lb ${methodLabel} · ${turkey.temp_f}°F · ${turkey.cook_min}m · Pull ${turkey.probe_pull_f || 158}°F → ${turkey.probe_target_f || 165}°F`;
   } else {
     probeSummary.textContent = "Turkey disabled in menu";
   }
@@ -1214,8 +1313,275 @@ function renderAddDishDropdown() {
 }
 
 // ---------------------------------------------------------------------------
-// Recipes & Things You Might Need (#recipesSection)
+// Recipes, Smart Culinary Scaling & In-App Recipe Editor (#recipesSection)
 // ---------------------------------------------------------------------------
+const UNICODE_FRAC_MAP = {
+  "⅛": 0.125,
+  "¼": 0.25,
+  "⅓": 1 / 3,
+  "⅜": 0.375,
+  "½": 0.5,
+  "⅝": 0.625,
+  "⅔": 2 / 3,
+  "¾": 0.75,
+  "⅞": 0.875,
+};
+
+const CULINARY_NUM_SRC = "(?:\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d+\\s*[⅛¼⅓⅜½⅝⅔¾⅞]|[⅛¼⅓⅜½⅝⅔¾⅞]|\\d+(?:\\.\\d+)?)";
+
+function parseCulinaryNumber(token) {
+  const s = String(token || "").trim();
+  if (!s) return NaN;
+
+  // Mixed ASCII fraction: "1 1/2"
+  const mixedAscii = s.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+  if (mixedAscii) {
+    const denom = Number(mixedAscii[3]);
+    return denom ? Number(mixedAscii[1]) + Number(mixedAscii[2]) / denom : NaN;
+  }
+
+  // ASCII fraction: "3/4"
+  const pureAscii = s.match(/^(\d+)\/(\d+)$/);
+  if (pureAscii) {
+    const denom = Number(pureAscii[2]);
+    return denom ? Number(pureAscii[1]) / denom : NaN;
+  }
+
+  // Mixed Unicode fraction: "1½" or "1 ½"
+  const mixedUni = s.match(/^(\d+)\s*([⅛¼⅓⅜½⅝⅔¾⅞])$/);
+  if (mixedUni) {
+    return Number(mixedUni[1]) + (UNICODE_FRAC_MAP[mixedUni[2]] || 0);
+  }
+
+  // Pure Unicode fraction: "¾"
+  if (Object.prototype.hasOwnProperty.call(UNICODE_FRAC_MAP, s)) {
+    return UNICODE_FRAC_MAP[s];
+  }
+
+  const num = Number(s);
+  return Number.isFinite(num) ? num : NaN;
+}
+
+function formatCulinaryNumber(value) {
+  if (!Number.isFinite(value) || value <= 0) return "0";
+  if (value >= 12) {
+    return String(Math.round(value));
+  }
+  const whole = Math.floor(value);
+  const rem = value - whole;
+  const candidates =
+    whole >= 1
+      ? [
+          [0, ""],
+          [0.25, "¼"],
+          [1 / 3, "⅓"],
+          [0.5, "½"],
+          [2 / 3, "⅔"],
+          [0.75, "¾"],
+          [1, "__UP__"],
+        ]
+      : [
+          [0, ""],
+          [0.125, "⅛"],
+          [0.25, "¼"],
+          [1 / 3, "⅓"],
+          [0.5, "½"],
+          [2 / 3, "⅔"],
+          [0.75, "¾"],
+          [1, "__UP__"],
+        ];
+
+  let best = candidates[0];
+  let bestDiff = Infinity;
+  for (const cand of candidates) {
+    const diff = Math.abs(rem - cand[0]);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = cand;
+    }
+  }
+
+  let outWhole = whole;
+  let frac = best[1];
+  if (frac === "__UP__") {
+    outWhole += 1;
+    frac = "";
+  }
+  if (outWhole === 0 && !frac) {
+    return "⅛";
+  }
+  if (outWhole > 0 && frac) {
+    return `${outWhole}${frac}`;
+  }
+  return outWhole > 0 ? String(outWhole) : frac;
+}
+
+function formatScaleMultiplier(scale) {
+  const s = safeNum(scale, 1);
+  if (Math.abs(s - 0.5) < 0.01) return "0.5×";
+  if (Math.abs(s - 0.75) < 0.01) return "0.75×";
+  if (Math.abs(s - 1.5) < 0.01) return "1.5×";
+  if (Math.abs(s - 2) < 0.01) return "2×";
+  return `${Math.round(s * 100) / 100}×`;
+}
+
+function fixLeadingUnitPlural(scaledVal, rest) {
+  const isSingular = Math.abs(scaledVal - 1) < 0.01 || scaledVal < 1;
+  const pluralPairs = [
+    ["cups", "cup"],
+    ["cans", "can"],
+    ["bags", "bag"],
+    ["sticks", "stick"],
+    ["cloves", "clove"],
+    ["stalks", "stalk"],
+    ["sprigs", "sprig"],
+    ["leaves", "leaf"],
+    ["heads", "head"],
+  ];
+  for (const [pl, sg] of pluralPairs) {
+    const rePl = new RegExp(`^(\\s+(?:\\([^)]*\\)\\s+)?)${pl}\\b`, "i");
+    const reSg = new RegExp(`^(\\s+(?:\\([^)]*\\)\\s+)?)${sg}\\b`, "i");
+    if (isSingular && rePl.test(rest)) {
+      return rest.replace(rePl, `$1${sg}`);
+    }
+    if (!isSingular && scaledVal > 1.05 && reSg.test(rest)) {
+      return rest.replace(reSg, `$1${pl}`);
+    }
+  }
+  return rest;
+}
+
+function scaleCulinaryToken(token, factor) {
+  const n = parseCulinaryNumber(token);
+  if (!Number.isFinite(n) || n <= 0) return token;
+  return formatCulinaryNumber(n * factor);
+}
+
+export function scaleIngredientLine(line, scale = 1, turkeyWeightLb = 25, dishId = "") {
+  const raw = String(line || "").trim();
+  if (!raw) return "";
+
+  const w = Number.isFinite(Number(turkeyWeightLb)) && Number(turkeyWeightLb) > 0 ? Number(turkeyWeightLb) : 25;
+  const wStr = formatWeightValue(w);
+
+  // Special turkey handling: dynamically reflect bird weight & dry-brine kosher salt (weight / 4 tbsp)
+  if (dishId === "turkey") {
+    if (/whole\s+turkey/i.test(raw)) {
+      if (/^1\s+whole\s+turkey\s*\([^)]*lb[^)]*\)/i.test(raw)) {
+        return raw.replace(/^1\s+whole\s+turkey\s*\([^)]*lb[^)]*\)/i, `${wStr} lb whole turkey`);
+      }
+      if (/^\d+(?:\.\d+)?\s*lb\s+whole\s+turkey/i.test(raw)) {
+        return raw.replace(/^\d+(?:\.\d+)?\s*lb\s+whole\s+turkey/i, `${wStr} lb whole turkey`);
+      }
+      return `${wStr} lb whole turkey (thawed, giblets & neck reserved for gravy)`;
+    }
+    if (/kosher\s+salt/i.test(raw) && /(dry\s*brine|seasoning)/i.test(raw)) {
+      const dcTbsp = formatCulinaryNumber(w / 4);
+      const mortonTbsp = formatCulinaryNumber(w / 8);
+      return `${dcTbsp} tbsp Diamond Crystal kosher salt (or ${mortonTbsp} tbsp Morton kosher salt) for dry brine/seasoning`;
+    }
+  }
+
+  const effectiveScale = dishId === "turkey" ? w / 25 : safeNum(scale, 1);
+  if (Math.abs(effectiveScale - 1) < 0.005) {
+    return raw;
+  }
+
+  let out = raw;
+
+  // 1) Scale leading quantity or range (optionally preceded by "Zest of " / "Zest and juice of ")
+  const leadRe = new RegExp(
+    `^((?:Zest(?:\\s+and\\s+juice)?\\s+of\\s+)?)(${CULINARY_NUM_SRC})(?:(\\s*(?:–|-|to)\\s*)(${CULINARY_NUM_SRC}))?(?=\\s|$)`,
+    "i"
+  );
+  const leadMatch = out.match(leadRe);
+  if (leadMatch) {
+    const prefix = leadMatch[1] || "";
+    const n1 = parseCulinaryNumber(leadMatch[2]);
+    const sep = leadMatch[3] || "";
+    const n2 = leadMatch[4] ? parseCulinaryNumber(leadMatch[4]) : NaN;
+    let rest = out.slice(leadMatch[0].length);
+    if (Number.isFinite(n1) && n1 > 0) {
+      const s1 = formatCulinaryNumber(n1 * effectiveScale);
+      if (sep && Number.isFinite(n2) && n2 > 0) {
+        const s2 = formatCulinaryNumber(n2 * effectiveScale);
+        out = `${prefix}${s1}${sep}${s2}${rest}`;
+      } else {
+        rest = fixLeadingUnitPlural(n1 * effectiveScale, rest);
+        out = `${prefix}${s1}${rest}`;
+      }
+    }
+  }
+
+  // 2) Scale secondary "+ <qty>" clauses (e.g. "+ 1 cup dry white wine", "+ ¾ tsp black pepper")
+  const plusRe = new RegExp(
+    `(\\+\\s*)(${CULINARY_NUM_SRC})(?:(\\s*(?:–|-|to)\\s*)(${CULINARY_NUM_SRC}))?(?=\\s|$)`,
+    "gi"
+  );
+  out = out.replace(plusRe, (full, plus, q1, sep, q2) => {
+    const n1 = parseCulinaryNumber(q1);
+    if (!Number.isFinite(n1) || n1 <= 0) return full;
+    const s1 = formatCulinaryNumber(n1 * effectiveScale);
+    if (sep && q2) {
+      const n2 = parseCulinaryNumber(q2);
+      if (Number.isFinite(n2) && n2 > 0) {
+        return `${plus}${s1}${sep}${formatCulinaryNumber(n2 * effectiveScale)}`;
+      }
+    }
+    return `${plus}${s1}`;
+  });
+
+  // 3) Scale comma-separated ingredient quantities followed by a culinary unit (never "9-inch" or "100%")
+  const commaUnitRe = new RegExp(
+    `(,\\s*)(${CULINARY_NUM_SRC})(\\s+(?:tsp|tbsp|cups?|lbs?|oz|cloves?|stalks?|carrots?|onions?|lemons?|sprigs?|leaves?|eggs?|sticks?|bags?|cans?|halved|quartered))\\b`,
+    "gi"
+  );
+  out = out.replace(commaUnitRe, (full, comma, qty, unit) => {
+    const n = parseCulinaryNumber(qty);
+    if (!Number.isFinite(n) || n <= 0) return full;
+    return `${comma}${formatCulinaryNumber(n * effectiveScale)}${unit}`;
+  });
+
+  // 4) Scale parenthetical total equivalents like "(4 sticks)", "(12 tbsp)", "(1 cup)", "(24 oz total)"
+  // while leaving container sizes like "(15 oz)" or "(12 oz)" untouched!
+  const parenTotalRe = new RegExp(
+    `\\((${CULINARY_NUM_SRC})(\\s+(?:sticks?|tbsp|tsp|cups?|lbs?|oz\\s+total))\\)`,
+    "gi"
+  );
+  out = out.replace(parenTotalRe, (full, qty, unit) => {
+    const n = parseCulinaryNumber(qty);
+    if (!Number.isFinite(n) || n <= 0) return full;
+    const scaled = n * effectiveScale;
+    const adjustedUnit = fixLeadingUnitPlural(scaled, unit);
+    return `(${formatCulinaryNumber(scaled)}${adjustedUnit})`;
+  });
+
+  return out;
+}
+
+function getCurrentRecipeScale() {
+  return safeNum(state.request?.kitchen?.recipe_scale, 1);
+}
+
+function getCurrentTurkeyWeightLb() {
+  const turkey = (state.request?.dishes || []).find((d) => d.id === "turkey");
+  return safeNum(turkey?.turkey_weight_lb, 25);
+}
+
+function getEffectiveRecipe(dish) {
+  if (!dish) return null;
+  const base = state.recipes[dish.id] || null;
+  const override = state.recipeOverrides[dish.id] || null;
+  if (!base && !override) return null;
+  if (!override) return base;
+  return {
+    ...(base || {}),
+    ...override,
+    dish_id: dish.id,
+    emoji: override.emoji || base?.emoji || dish.emoji || "🍽️",
+  };
+}
+
 function normalizeChecklistKey(str) {
   return String(str || "")
     .toLowerCase()
@@ -1313,9 +1679,23 @@ function jumpToDishRecipe(dishId) {
 function renderRecipesSection() {
   if (!state.request) return;
   const enabledDishes = getEnabledDishes();
+  const scale = getCurrentRecipeScale();
   const countPill = document.getElementById("recipesCountPill");
   if (countPill) {
     countPill.textContent = `${enabledDishes.length} enabled ${enabledDishes.length === 1 ? "dish" : "dishes"}`;
+  }
+  const scalePill = document.getElementById("recipeScalePill");
+  if (scalePill) {
+    const isScaled = Math.abs(scale - 1) > 0.005;
+    scalePill.classList.toggle("hidden", !isScaled);
+    if (isScaled) {
+      scalePill.textContent = `Scaled ${formatScaleMultiplier(scale)}`;
+    }
+  }
+  const scaleSel = document.getElementById("recipeScaleSelect");
+  if (scaleSel) {
+    const match = [...scaleSel.options].find((o) => Math.abs(Number(o.value) - scale) < 0.001);
+    if (match) scaleSel.value = match.value;
   }
   setRecipesTab(state.recipesTab);
   renderRecipeCards(enabledDishes);
@@ -1331,20 +1711,39 @@ function renderRecipeCards(enabledDishes) {
     return;
   }
 
+  const scale = getCurrentRecipeScale();
+  const isScaled = Math.abs(scale - 1) > 0.005;
+  const turkeyWeightLb = getCurrentTurkeyWeightLb();
+  const turkeyWStr = formatWeightValue(turkeyWeightLb);
+
   grid.innerHTML = enabledDishes
     .map((dish) => {
-      const recipe = state.recipes[dish.id] || null;
+      const recipe = getEffectiveRecipe(dish);
+      const isCustomOverride = Boolean(state.recipeOverrides[dish.id]);
       const emoji = recipe?.emoji || dish.emoji || "🍽️";
-      const title = recipe?.title || recipe?.name || dish.name;
+      let title = recipe?.title || recipe?.name || dish.name;
+      if (dish.id === "turkey" && !isCustomOverride && /^\d+(?:\.\d+)?\s*lb\b/i.test(title)) {
+        title = title.replace(/^\d+(?:\.\d+)?\s*lb\b/i, `${turkeyWStr} lb`);
+      }
+
       const servingsRaw = recipe?.servings ?? recipe?.yield ?? null;
-      const servingsText =
+      let servingsText =
         servingsRaw !== null && servingsRaw !== undefined && String(servingsRaw).trim()
           ? typeof servingsRaw === "number"
             ? `Serves ${servingsRaw}`
-            : String(servingsRaw).toLowerCase().includes("serv") || String(servingsRaw).toLowerCase().includes("pie")
+            : String(servingsRaw).toLowerCase().includes("serv") ||
+              String(servingsRaw).toLowerCase().includes("pie") ||
+              String(servingsRaw).toLowerCase().includes("guest") ||
+              String(servingsRaw).toLowerCase().includes("roll") ||
+              String(servingsRaw).toLowerCase().includes("slice")
             ? String(servingsRaw)
             : `Serves ${servingsRaw}`
           : "Feast portion";
+
+      if (dish.id === "turkey" && !isCustomOverride && Math.abs(turkeyWeightLb - 25) > 0.05) {
+        const rec = turkeyRecommendationBrowser(turkeyWeightLb, dish.turkey_method || "convection_roast");
+        servingsText = `${rec.suggested_guests} guests (${turkeyWStr} lb bird)`;
+      }
 
       const activeRaw = recipe?.active_min ?? recipe?.active_time ?? dish.prep_min;
       const activeText =
@@ -1355,8 +1754,24 @@ function renderRecipeCards(enabledDishes) {
           : `Prep ${dish.prep_min}m · Cook ${dish.cook_min}m`;
       const ovenBadge = getRecipeOvenBadge(dish, recipe);
 
+      const scaleBadgeHtml =
+        dish.id === "turkey"
+          ? Math.abs(turkeyWeightLb - 25) > 0.05
+            ? `<span class="recipe-badge recipe-badge-scale">🦃 Scaled for ${escapeHtml(turkeyWStr)} lb</span>`
+            : ""
+          : isScaled
+          ? `<span class="recipe-badge recipe-badge-scale">⚖️ Scaled ${escapeHtml(formatScaleMultiplier(scale))}</span>`
+          : "";
+
+      const customBadgeHtml = isCustomOverride
+        ? `<span class="recipe-badge recipe-badge-custom">✏️ Custom</span>`
+        : "";
+
       const rawIngredients = Array.isArray(recipe?.ingredients) ? recipe.ingredients : [];
-      const ingredients = rawIngredients.map(formatIngredientLine).filter(Boolean);
+      const ingredients = rawIngredients
+        .map(formatIngredientLine)
+        .filter(Boolean)
+        .map((line) => scaleIngredientLine(line, scale, turkeyWeightLb, dish.id));
 
       const rawSteps = Array.isArray(recipe?.steps)
         ? recipe.steps
@@ -1391,7 +1806,7 @@ function renderRecipeCards(enabledDishes) {
               ${steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}
             </ol>
           </div>`
-        : `<p class="muted small" style="margin:0">Custom dish — edit oven temp, prep, and cook duration in Menu &amp; Dish Controls above.</p>`;
+        : `<p class="muted small" style="margin:0">No custom recipe steps yet — click <strong>✏️ Edit Recipe</strong> to add ingredients, equipment, and steps.</p>`;
 
       const tipHtml = makeAheadTip
         ? `<div class="recipe-tip-box"><strong>Make-Ahead &amp; Chef Tip:</strong> ${escapeHtml(makeAheadTip)}</div>`
@@ -1408,9 +1823,14 @@ function renderRecipeCards(enabledDishes) {
                   <span class="recipe-badge">🍽️ ${escapeHtml(servingsText)}</span>
                   <span class="recipe-badge">⏱️ ${escapeHtml(activeText)}</span>
                   <span class="${ovenBadge.cls}">${escapeHtml(ovenBadge.text)}</span>
+                  ${scaleBadgeHtml}
+                  ${customBadgeHtml}
                 </div>
               </div>
             </div>
+            <button type="button" class="btn btn-secondary btn-sm recipe-edit-btn" data-edit-recipe-id="${escapeHtml(dish.id)}" title="Edit ingredients, equipment, and steps">
+              ✏️ Edit Recipe
+            </button>
           </div>
           ${ingredientsHtml}
           ${stepsHtml}
@@ -1418,6 +1838,10 @@ function renderRecipeCards(enabledDishes) {
         </article>`;
     })
     .join("");
+
+  grid.querySelectorAll(".recipe-edit-btn").forEach((btn) => {
+    btn.addEventListener("click", () => openRecipeEditorModal(btn.dataset.editRecipeId));
+  });
 }
 
 function renderGearChecklists(enabledDishes) {
@@ -1425,23 +1849,36 @@ function renderGearChecklists(enabledDishes) {
   const equipmentEl = document.getElementById("equipmentChecklist");
   if (!shoppingEl || !equipmentEl) return;
 
-  // 1) Build Shopping & Pantry Ingredients grouped by enabled dish
+  const scale = getCurrentRecipeScale();
+  const isScaled = Math.abs(scale - 1) > 0.005;
+  const turkeyWeightLb = getCurrentTurkeyWeightLb();
+
+  const shopScaleBadge = document.getElementById("shoppingScaleBadge");
+  if (shopScaleBadge) {
+    shopScaleBadge.classList.toggle("hidden", !isScaled);
+    if (isScaled) {
+      shopScaleBadge.textContent = `Scaled ${formatScaleMultiplier(scale)}`;
+    }
+  }
+
+  // 1) Build Shopping & Pantry Ingredients grouped by enabled dish (scaled live!)
   const shoppingGroups = [];
   let shoppingTotal = 0;
   let shoppingChecked = 0;
 
   for (const dish of enabledDishes) {
-    const recipe = state.recipes[dish.id];
+    const recipe = getEffectiveRecipe(dish);
     const rawIngredients = Array.isArray(recipe?.ingredients) ? recipe.ingredients : [];
     const items = rawIngredients
       .map(formatIngredientLine)
       .filter(Boolean)
-      .map((text, idx) => {
-        const key = `ing::${dish.id}::${normalizeChecklistKey(text) || idx}`;
+      .map((baseText, idx) => {
+        const key = `ing::${dish.id}::${normalizeChecklistKey(baseText) || idx}`;
+        const displayText = scaleIngredientLine(baseText, scale, turkeyWeightLb, dish.id);
         const checked = state.checkedItems.has(key);
         shoppingTotal += 1;
         if (checked) shoppingChecked += 1;
-        return { key, text, checked };
+        return { key, text: displayText, checked };
       });
     if (items.length > 0) {
       shoppingGroups.push({
@@ -1455,7 +1892,7 @@ function renderGearChecklists(enabledDishes) {
   // 2) Build Deduplicated Dish Equipment + Universal Host Essentials
   const equipmentMap = new Map(); // normalized label -> { key, label, dishes: Set, notes: [] }
   for (const dish of enabledDishes) {
-    const recipe = state.recipes[dish.id];
+    const recipe = getEffectiveRecipe(dish);
     const rawGear = Array.isArray(recipe?.equipment)
       ? recipe.equipment
       : Array.isArray(recipe?.gear)
@@ -1644,6 +2081,131 @@ function renderGearChecklists(enabledDishes) {
 }
 
 // ---------------------------------------------------------------------------
+// In-App Recipe Editor Modal (#recipeEditorModal)
+// ---------------------------------------------------------------------------
+function openRecipeEditorModal(dishId) {
+  const dish = (state.request?.dishes || []).find((d) => d.id === dishId);
+  if (!dish) return;
+  state.editingRecipeDishId = dishId;
+
+  const base = state.recipes[dishId] || null;
+  const effective = getEffectiveRecipe(dish);
+  const hasOverride = Boolean(state.recipeOverrides[dishId]);
+
+  const titleEl = document.getElementById("recipeEditorTitle");
+  const subtitleEl = document.getElementById("recipeEditorSubtitle");
+  if (titleEl) titleEl.textContent = `✏️ Edit Recipe — ${dish.emoji} ${dish.name}`;
+  if (subtitleEl) {
+    subtitleEl.textContent = base
+      ? "Edit ingredients, equipment, or steps — updates Recipes & Shopping List live. Reset restores the built-in recipe."
+      : "Create or customize your own recipe — automatically feeds Recipes & Things You Might Need!";
+  }
+
+  document.getElementById("reTitleInput").value = effective?.title || effective?.name || dish.name;
+  document.getElementById("reServingsInput").value =
+    effective?.servings || effective?.yield || "12–16 guests";
+  document.getElementById("reActiveTimeInput").value =
+    effective?.active_time ||
+    (typeof effective?.active_min === "number"
+      ? `${effective.active_min} min prep · ${dish.cook_min} min cook`
+      : `${dish.prep_min} min prep · ${dish.cook_min} min cook`);
+
+  const rawIngredients = Array.isArray(effective?.ingredients) ? effective.ingredients : [];
+  document.getElementById("reIngredientsInput").value = rawIngredients
+    .map(formatIngredientLine)
+    .filter(Boolean)
+    .join("\n");
+
+  const rawEquipment = Array.isArray(effective?.equipment)
+    ? effective.equipment
+    : Array.isArray(effective?.gear)
+    ? effective.gear
+    : [];
+  document.getElementById("reEquipmentInput").value = rawEquipment
+    .map((e) => formatEquipmentEntry(e).label)
+    .filter(Boolean)
+    .join("\n");
+
+  const rawSteps = Array.isArray(effective?.steps)
+    ? effective.steps
+    : Array.isArray(effective?.method)
+    ? effective.method
+    : [];
+  document.getElementById("reStepsInput").value = rawSteps
+    .map((s) => String(s || "").trim())
+    .filter(Boolean)
+    .join("\n");
+
+  document.getElementById("reTipInput").value = String(
+    effective?.make_ahead_tip ?? effective?.make_ahead ?? effective?.tip ?? dish.technique_note ?? ""
+  ).trim();
+
+  const resetBtn = document.getElementById("resetRecipeEditorBtn");
+  if (resetBtn) {
+    resetBtn.classList.toggle("hidden", !hasOverride);
+  }
+
+  document.getElementById("recipeEditorModal").classList.remove("hidden");
+  setTimeout(() => document.getElementById("reTitleInput")?.focus(), 30);
+}
+
+function closeRecipeEditorModal() {
+  state.editingRecipeDishId = null;
+  document.getElementById("recipeEditorModal")?.classList.add("hidden");
+}
+
+function saveRecipeEditorModal() {
+  const dishId = state.editingRecipeDishId;
+  if (!dishId) return;
+  const dish = (state.request?.dishes || []).find((d) => d.id === dishId);
+  if (!dish) return;
+
+  const splitLines = (val) =>
+    String(val || "")
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+  const title = document.getElementById("reTitleInput").value.trim() || dish.name;
+  const servings = document.getElementById("reServingsInput").value.trim() || "Feast portion";
+  const active_time =
+    document.getElementById("reActiveTimeInput").value.trim() ||
+    `${dish.prep_min} min prep · ${dish.cook_min} min cook`;
+  const ingredients = splitLines(document.getElementById("reIngredientsInput").value);
+  const equipment = splitLines(document.getElementById("reEquipmentInput").value);
+  const steps = splitLines(document.getElementById("reStepsInput").value);
+  const make_ahead_tip = document.getElementById("reTipInput").value.trim();
+
+  state.recipeOverrides[dishId] = {
+    dish_id: dishId,
+    emoji: dish.emoji || "🍽️",
+    title,
+    servings,
+    active_time,
+    ingredients,
+    equipment,
+    steps,
+    make_ahead_tip,
+  };
+
+  saveRecipeOverrides();
+  closeRecipeEditorModal();
+  renderRecipesSection();
+  showToast(`💾 Saved custom recipe for ${dish.emoji} ${title}!`);
+}
+
+function resetRecipeEditorModal() {
+  const dishId = state.editingRecipeDishId;
+  if (!dishId) return;
+  const dish = (state.request?.dishes || []).find((d) => d.id === dishId);
+  delete state.recipeOverrides[dishId];
+  saveRecipeOverrides();
+  closeRecipeEditorModal();
+  renderRecipesSection();
+  showToast(`↺ Restored default recipe for ${dish ? `${dish.emoji} ${dish.name}` : dishId}.`);
+}
+
+// ---------------------------------------------------------------------------
 // Tune My Feast (All Dishes) Quick-Alignment Modal
 // ---------------------------------------------------------------------------
 function renderTuneStrategyCell(dish) {
@@ -1809,9 +2371,11 @@ async function applyTuneFeastModal() {
     if (tMethod) {
       dish.turkey_method = tMethod.value;
       dish.turkey_weight_lb = Number(tr.querySelector(".tune-turkey-weight").value) || dish.turkey_weight_lb || 25;
+      syncTurkeyDishName(dish, dish.turkey_weight_lb);
+      const localRec = turkeyRecommendationBrowser(dish.turkey_weight_lb, dish.turkey_method);
+      dish.rest_min = localRec.rest_min;
       if (state.turkeyMethods[dish.turkey_method]) {
         dish.technique_note = state.turkeyMethods[dish.turkey_method].note;
-        dish.rest_min = state.turkeyMethods[dish.turkey_method].rest_min || dish.rest_min;
       }
     }
     const dryEl = tr.querySelector(".tune-bread-dry");
@@ -1914,14 +2478,19 @@ function openDishDrawer(dishId) {
       </div>`;
   }
 
-  const hasRecipe = Boolean(state.recipes[dish.id]);
-  const recipeJumpHtml = hasRecipe
-    ? `
+  const hasRecipe = Boolean(getEffectiveRecipe(dish));
+  const recipeJumpHtml = `
       <div class="drawer-recipe-jump-row">
-        <span class="drawer-recipe-jump-meta">Full ingredients, method &amp; gear available in Recipes.</span>
-        <button id="drawerJumpRecipeBtn" class="btn btn-secondary btn-sm" type="button">📖 Jump to Recipe</button>
-      </div>`
-    : "";
+        <span class="drawer-recipe-jump-meta">${
+          hasRecipe
+            ? "Ingredients, method &amp; gear synced live in Recipes."
+            : "Add your own ingredients, equipment &amp; method steps."
+        }</span>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          ${hasRecipe ? `<button id="drawerJumpRecipeBtn" class="btn btn-secondary btn-sm" type="button">📖 Recipe</button>` : ""}
+          <button id="drawerEditRecipeBtn" class="btn btn-secondary btn-sm" type="button">✏️ Edit</button>
+        </div>
+      </div>`;
 
   const body = document.getElementById("drawerBody");
   body.innerHTML = `
@@ -2028,6 +2597,10 @@ function openDishDrawer(dishId) {
   document.getElementById("drawerJumpRecipeBtn")?.addEventListener("click", () => {
     jumpToDishRecipe(dish.id);
   });
+  document.getElementById("drawerEditRecipeBtn")?.addEventListener("click", () => {
+    closeDishDrawer();
+    openRecipeEditorModal(dish.id);
+  });
 
   if (state.sousChef.open) {
     state.sousChef.open = false;
@@ -2077,8 +2650,12 @@ async function applyDishDrawer(repair = false) {
   dish.rest_min = Math.max(0, Number(document.getElementById("edRestMin").value) || 0);
 
   if (document.getElementById("edTurkeyMethod")) {
+    const prevWeight = dish.turkey_weight_lb;
     dish.turkey_method = document.getElementById("edTurkeyMethod").value;
     dish.turkey_weight_lb = Number(document.getElementById("edTurkeyWeight").value) || 25;
+    if (prevWeight !== dish.turkey_weight_lb) {
+      syncTurkeyDishName(dish, dish.turkey_weight_lb);
+    }
     dish.probe_pull_f = Number(document.getElementById("edProbePull").value) || 158;
     dish.probe_target_f = Number(document.getElementById("edProbeTarget").value) || 165;
     if (state.turkeyMethods[dish.turkey_method]) {
@@ -2135,6 +2712,40 @@ function wireGlobalListeners() {
   document.getElementById("dinnerTimeSelect").addEventListener("change", async (e) => {
     state.request.kitchen.dinner_ready_min = Number(e.target.value);
     await apiSolve(false);
+  });
+
+  document.getElementById("turkeyWeightSelect").addEventListener("change", async (e) => {
+    const turkey = state.request.dishes.find((d) => d.id === "turkey");
+    if (!turkey) return;
+    const weightLb = Number(e.target.value);
+    if (!Number.isFinite(weightLb) || weightLb < 8) return;
+    const method = turkey.turkey_method || "convection_roast";
+    const rec = await fetchTurkeyRecommendation(weightLb, method);
+    const localRec = turkeyRecommendationBrowser(weightLb, method);
+    turkey.turkey_weight_lb = weightLb;
+    syncTurkeyDishName(turkey, weightLb);
+    turkey.cook_min = rec?.cook_min ?? localRec.cook_min;
+    // Use weight-scaled rest_min even if older backend returns static 55m
+    turkey.rest_min =
+      rec?.kosher_salt_tbsp !== undefined && rec?.rest_min ? rec.rest_min : localRec.rest_min;
+    if (rec?.temp_f) turkey.temp_f = rec.temp_f;
+    turkey.locked_cook_start_min = null;
+    await apiSolve(false);
+    showToast(
+      `🦃 Updated to ${formatWeightValue(weightLb)} lb turkey (${turkey.cook_min}m cook · ${turkey.rest_min}m rest) — schedule re-solved!`
+    );
+  });
+
+  document.getElementById("recipeScaleSelect").addEventListener("change", (e) => {
+    const scale = safeNum(e.target.value, 1);
+    state.request.kitchen.recipe_scale = scale;
+    saveLocalState();
+    renderRecipesSection();
+    showToast(
+      Math.abs(scale - 1) < 0.005
+        ? "🍽️ Recipes & shopping list reset to 1× default scale."
+        : `🍽️ Recipes & shopping list scaled to ${formatScaleMultiplier(scale)}!`
+    );
   });
 
   document.getElementById("startFromSelect").addEventListener("change", async (e) => {
@@ -2252,15 +2863,19 @@ function wireGlobalListeners() {
   document.getElementById("scenarioSpatchcockBtn").addEventListener("click", async () => {
     const turkey = state.request.dishes.find((d) => d.id === "turkey");
     if (!turkey) return;
+    const w = safeNum(turkey.turkey_weight_lb, 25);
+    const rec = await fetchTurkeyRecommendation(w, "spatchcock");
+    const localRec = turkeyRecommendationBrowser(w, "spatchcock");
     turkey.locked_cook_start_min = null;
     turkey.turkey_method = "spatchcock";
-    turkey.temp_f = 450;
-    turkey.cook_min = 135;
-    turkey.rest_min = 55;
+    turkey.temp_f = rec?.temp_f || 450;
+    turkey.cook_min = rec?.cook_min || localRec.cook_min;
+    turkey.rest_min =
+      rec?.kosher_salt_tbsp !== undefined && rec?.rest_min ? rec.rest_min : localRec.rest_min;
     turkey.probe_pull_f = 155;
     if (state.turkeyMethods.spatchcock) turkey.technique_note = state.turkeyMethods.spatchcock.note;
     await apiSolve(false);
-    showToast("🍗 Switched to Kenji 450°F Spatchcock — 20m oven cooldown auto-inserted before Mac & Cheese!");
+    showToast(`🍗 Switched ${formatWeightValue(w)} lb turkey to Kenji 450°F Spatchcock (${turkey.cook_min}m roast)!`);
   });
 
   document.getElementById("scenarioDayOfPiesBtn").addEventListener("click", async () => {
@@ -2313,11 +2928,21 @@ function wireGlobalListeners() {
     if (e.target.id === "validatorModal") e.target.classList.add("hidden");
   });
 
+  // Recipe Editor modal
+  document.getElementById("closeRecipeEditorBtn").addEventListener("click", closeRecipeEditorModal);
+  document.getElementById("cancelRecipeEditorBtn").addEventListener("click", closeRecipeEditorModal);
+  document.getElementById("saveRecipeEditorBtn").addEventListener("click", saveRecipeEditorModal);
+  document.getElementById("resetRecipeEditorBtn").addEventListener("click", resetRecipeEditorModal);
+  document.getElementById("recipeEditorModal").addEventListener("click", (e) => {
+    if (e.target.id === "recipeEditorModal") closeRecipeEditorModal();
+  });
+
   // Escape key closes modals / drawers
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
     closeAllDrawers();
     closeTuneFeastModal();
+    closeRecipeEditorModal();
     document.getElementById("validatorModal").classList.add("hidden");
   });
 
@@ -2359,10 +2984,15 @@ function wireGlobalListeners() {
   document.getElementById("resetBtn").addEventListener("click", async () => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(CHECKED_KEY);
+    localStorage.removeItem(RECIPE_OVERRIDES_KEY);
     state.checkedEvents.clear();
+    state.recipeOverrides = {};
     window.history.replaceState(null, "", window.location.pathname);
     const data = await loadDefaultData();
     state.request = data.request;
+    if (state.request.kitchen.recipe_scale === undefined) {
+      state.request.kitchen.recipe_scale = 1;
+    }
     ingestRecipesPayload(data);
     await ensureRecipesLoaded();
     const liveMin = computeLiveStartMinute();

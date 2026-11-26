@@ -15,7 +15,7 @@
         <div class="brand-titles">
           <h1>Thanksgiving OR Planner</h1>
           <p class="brand-sub">
-            KitchenAid Combo Oven · 25 lb Feast · CP-SAT Solver
+            KitchenAid Combo Oven · <span id="feastWeightLabel">25 lb Feast</span> · CP-SAT Solver
             <span class="sub-sep">·</span>
             <span id="liveClockLabel" class="live-clock-pill">Live Clock: …</span>
           </p>
@@ -55,6 +55,24 @@
             <button type="button" class="chip" data-min="2460">5:00 PM</button>
             <button type="button" class="chip" data-min="2520">6:00 PM</button>
           </div>
+        </div>
+
+        <div class="control-group control-turkey">
+          <label class="control-label" for="turkeyWeightSelect">🦃 Turkey Weight</label>
+          <select id="turkeyWeightSelect" class="ctrl-field select-md" aria-label="Turkey Weight in Pounds">
+            <option value="10">10 lb (5–7 guests)</option>
+            <option value="12">12 lb (6–8 guests)</option>
+            <option value="14">14 lb (8–10 guests)</option>
+            <option value="16">16 lb (10–12 guests)</option>
+            <option value="18">18 lb (12–14 guests)</option>
+            <option value="20">20 lb (14–16 guests)</option>
+            <option value="22">22 lb (16–18 guests)</option>
+            <option value="24">24 lb (17–20 guests)</option>
+            <option value="25" selected>25 lb (18–22 · Default)</option>
+            <option value="26">26 lb (19–23 guests)</option>
+            <option value="28">28 lb (22+ guests)</option>
+            <option value="30">30 lb (24+ guests)</option>
+          </select>
         </div>
 
         <div class="control-group">
@@ -219,6 +237,7 @@
           <div class="recipes-title-row">
             <h2>📖 Recipes &amp; Things You Might Need</h2>
             <span id="recipesCountPill" class="pill pill-neutral pill-compact">0 dishes</span>
+            <span id="recipeScalePill" class="pill pill-warning pill-compact hidden">Scaled 1×</span>
             <span id="gearProgressPill" class="pill pill-success pill-compact">0 of 0 checked</span>
           </div>
           <p class="section-sub" id="recipesSubtitle">
@@ -226,6 +245,16 @@
           </p>
         </div>
         <div class="recipes-controls">
+          <div class="recipe-scale-control">
+            <label class="scale-control-label" for="recipeScaleSelect">🍽️ Recipe Scale</label>
+            <select id="recipeScaleSelect" class="select-md scale-select" aria-label="Recipe Ingredient Scale">
+              <option value="0.5">0.5× (6–8 guests)</option>
+              <option value="0.75">0.75× (10–12 guests)</option>
+              <option value="1" selected>1× (16–20 guests · Default)</option>
+              <option value="1.5">1.5× (24–28 guests)</option>
+              <option value="2">2× (32+ guests)</option>
+            </select>
+          </div>
           <div class="segmented recipes-tabs" id="recipesSectionTabs" role="tablist" aria-label="Recipes and Gear views">
             <button type="button" class="seg-btn active" data-tab="recipes" role="tab" aria-selected="true">📖 Dish Recipes</button>
             <button type="button" class="seg-btn" data-tab="gear" role="tab" aria-selected="false">🛒 Things You Might Need</button>
@@ -258,7 +287,10 @@
                 <h3>🛒 Shopping &amp; Pantry Ingredients</h3>
                 <p class="muted small">Grouped by enabled dish — toggle dishes above to update live.</p>
               </div>
-              <span id="shoppingCountBadge" class="pill pill-neutral pill-compact">0 / 0</span>
+              <div class="gear-col-badges">
+                <span id="shoppingScaleBadge" class="pill pill-warning pill-compact hidden">Scaled 1×</span>
+                <span id="shoppingCountBadge" class="pill pill-neutral pill-compact">0 / 0</span>
+              </div>
             </div>
             <div id="shoppingChecklist" class="checklist-groups"></div>
           </div>
@@ -336,6 +368,66 @@
         <div class="modal-footer-actions">
           <button id="cancelTuneFeastBtn" class="btn btn-secondary" type="button">Cancel</button>
           <button id="applyTuneFeastBtn" class="btn btn-primary" type="button">⚡ Solve My Tuned Feast</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- In-App Recipe Editor Modal -->
+  <div id="recipeEditorModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="recipeEditorTitle">
+    <div class="modal-card modal-card-recipe">
+      <div class="modal-header">
+        <div>
+          <h3 id="recipeEditorTitle">✏️ Edit Recipe</h3>
+          <p id="recipeEditorSubtitle" class="muted small">Customize ingredients, equipment, and steps — updates Recipes &amp; Shopping List live.</p>
+        </div>
+        <button id="closeRecipeEditorBtn" class="icon-btn" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="recipe-editor-body">
+        <div class="form-row">
+          <label for="reTitleInput">Dish Title</label>
+          <input id="reTitleInput" type="text" class="input-field recipe-input" placeholder="e.g., Grandma's Roasted Brussels Sprouts" />
+        </div>
+        <div class="form-grid-2">
+          <div class="form-row">
+            <label for="reServingsInput">Servings Label</label>
+            <input id="reServingsInput" type="text" class="input-field recipe-input" placeholder="e.g., 14–16 guests" />
+          </div>
+          <div class="form-row">
+            <label for="reActiveTimeInput">Active Time</label>
+            <input id="reActiveTimeInput" type="text" class="input-field recipe-input" placeholder="e.g., 20 min prep · 35 min bake" />
+          </div>
+        </div>
+        <div class="form-row">
+          <label for="reIngredientsInput">
+            <span>Ingredients <span class="muted">(one per line)</span></span>
+            <span class="recipe-field-hint">Auto-scales with Recipe Scale</span>
+          </label>
+          <textarea id="reIngredientsInput" class="recipe-textarea" rows="6" placeholder="2 lb elbow macaroni&#10;5 cups warm whole milk&#10;1 lb sharp aged cheddar, shredded"></textarea>
+        </div>
+        <div class="form-row">
+          <label for="reEquipmentInput">
+            <span>Equipment <span class="muted">(one per line)</span></span>
+            <span class="recipe-field-hint">Auto-deduplicated in Gear tab</span>
+          </label>
+          <textarea id="reEquipmentInput" class="recipe-textarea" rows="4" placeholder="9×13-inch Deep Ceramic Baking Dish&#10;Heavy-Duty Aluminum Foil"></textarea>
+        </div>
+        <div class="form-row">
+          <label for="reStepsInput">
+            <span>Method Steps <span class="muted">(one per line)</span></span>
+          </label>
+          <textarea id="reStepsInput" class="recipe-textarea" rows="6" placeholder="Preheat oven to 350°F and butter baking dish.&#10;Combine ingredients and bake until bubbling and golden."></textarea>
+        </div>
+        <div class="form-row">
+          <label for="reTipInput">Make-Ahead Tip</label>
+          <input id="reTipInput" type="text" class="input-field recipe-input" placeholder="e.g., Assemble the night before and temper 25 min before baking." />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="resetRecipeEditorBtn" class="btn btn-danger-ghost btn-sm" type="button">↺ Reset to Default</button>
+        <div class="modal-footer-actions">
+          <button id="cancelRecipeEditorBtn" class="btn btn-secondary" type="button">Cancel</button>
+          <button id="saveRecipeEditorBtn" class="btn btn-primary" type="button">💾 Save Recipe</button>
         </div>
       </div>
     </div>

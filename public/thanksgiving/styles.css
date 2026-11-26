@@ -244,8 +244,8 @@ body {
 
 .command-grid {
   display: grid;
-  grid-template-columns: minmax(220px, 1.45fr) minmax(195px, 1.3fr) minmax(160px, 1fr) minmax(180px, 1.15fr) minmax(125px, 0.8fr) auto;
-  gap: 12px 14px;
+  grid-template-columns: minmax(205px, 1.35fr) minmax(152px, 1fr) minmax(168px, 1.1fr) minmax(140px, 0.95fr) minmax(164px, 1.05fr) minmax(112px, 0.72fr) auto;
+  gap: 12px 12px;
   align-items: start;
 }
 
@@ -1374,15 +1374,21 @@ body {
 .footer a { color: var(--accent); text-decoration: none; font-weight: 600; }
 
 /* Responsive Breakpoints */
-@media (max-width: 1220px) {
+@media (max-width: 1260px) {
   .command-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .control-dinner {
+    grid-column: span 2;
   }
 }
 
 @media (max-width: 860px) {
   .command-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .control-dinner {
+    grid-column: 1 / -1;
   }
   .dish-list {
     grid-template-columns: 1fr;
@@ -1405,6 +1411,9 @@ body {
   .command-grid {
     grid-template-columns: 1fr;
   }
+  .control-dinner {
+    grid-column: auto;
+  }
   .next-up-card {
     flex-direction: column;
     align-items: flex-start;
@@ -1423,7 +1432,7 @@ body {
 
 /* Clean Print Kitchen Sheet */
 @media print {
-  .topbar-actions, .crisis-bar, .hero-controls, .timeline-controls, .menu-header-actions, .menu-panel, .footer, .drawer, .modal, .backdrop, .control-tune, .sous-chef-fab, .recipes-tabs, .gear-reset-btn, .drawer-recipe-jump-row { display: none !important; }
+  .topbar-actions, .crisis-bar, .hero-controls, .timeline-controls, .menu-header-actions, .menu-panel, .footer, .drawer, .modal, .backdrop, .control-tune, .sous-chef-fab, .recipes-tabs, .gear-reset-btn, .drawer-recipe-jump-row, .recipe-edit-btn, .recipe-scale-control { display: none !important; }
   body { background: #fff; }
   .card { box-shadow: none; border: 1px solid #ccc; }
   .hero-timeline, .timeline-card, .recipes-panel { break-inside: auto; }
@@ -2433,5 +2442,125 @@ body {
   .recipe-grid,
   .gear-columns {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Recipe Scale Selector, Scale/Custom Badges & In-App Recipe Editor */
+.recipe-scale-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 4px 3px 10px;
+  border-radius: 10px;
+  background: var(--muted-bg);
+  border: 1px solid var(--line-soft);
+}
+
+.scale-control-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.scale-select {
+  height: 30px;
+  font-size: 12px;
+  padding: 0 9px;
+  border-radius: 7px;
+  border-color: var(--line);
+  background: var(--surface);
+}
+
+.recipe-edit-btn {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  font-size: 11.5px;
+  border-radius: 8px;
+}
+
+.recipe-badge-scale {
+  background: var(--warning-soft);
+  color: var(--warning);
+  border-color: #e9d19c;
+}
+
+.recipe-badge-custom {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: #eab7c2;
+}
+
+.gear-col-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.modal-card-recipe {
+  width: min(720px, 96vw);
+}
+
+.recipe-editor-body {
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 2px;
+}
+
+.recipe-input {
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+}
+
+.recipe-textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.48;
+  resize: vertical;
+  outline: none;
+}
+
+.recipe-textarea:focus,
+.recipe-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(186, 12, 47, 0.08);
+}
+
+.recipe-field-hint {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+@media (max-width: 600px) {
+  .recipe-scale-control {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .scale-select {
+    flex: 1;
+    min-width: 0;
+  }
+  .recipe-card-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .recipe-edit-btn {
+    align-self: flex-start;
   }
 }
